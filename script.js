@@ -70,10 +70,41 @@ const modalTfm = document.getElementById("modal-tfm");
 const modalTfmConteudo = document.getElementById("modal-tfm-conteudo");
 const modalHelp = document.getElementById("modal-help");
 const btnHelp = document.querySelector(".btn-help");
+const matriculaInput = document.getElementById("matricula");
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycpTr1Vj5nCByX2gYKvaXnhw7EiBUYqlnRq7ClSoqr2ZNBNvAUqvW2br6ksyAJDcxO/exec";
-const colaboradoresDisponiveis = Array.from(document.querySelectorAll("#colaboradores-opcoes option"))
-    .map((option) => option.textContent.trim())
-    .filter(Boolean);
+const colaboradores = [
+    { matricula: "87033", nome: "Leonel Barros Pereira Da Silva" },
+    { matricula: "61449", nome: "Ailton Dos Reis Santana" },
+    { matricula: "61618", nome: "Airton Fonseca do Nascimento" },
+    { matricula: "90079", nome: "Albert de Almeida Libério" },
+    { matricula: "105741", nome: "Caio Resende Soares" },
+    { matricula: "61526", nome: "Cláudio Roberto Miranda" },
+    { matricula: "61461", nome: "Cleiton De Souza" },
+    { matricula: "61221", nome: "Ecelson Miranda" },
+    { matricula: "61604", nome: "Edilson Ribeiro de Andrade" },
+    { matricula: "81531", nome: "Fabio Henrique Alves Ventura" },
+    { matricula: "61134", nome: "Franklin de Jesus Souza" },
+    { matricula: "70980", nome: "Geraldo Marçal Paiva" },
+    { matricula: "60738", nome: "Gustavo da Silva Amaral" },
+    { matricula: "62011", nome: "João Paulo de Rezende Trindade" },
+    { matricula: "83661", nome: "José Edson Martins Coelho" },
+    { matricula: "91542", nome: "José Egídio Rocha" },
+    { matricula: "60884", nome: "José Roberto Souza Franco" },
+    { matricula: "91541", nome: "Paulo Roberto Ferreira" },
+    { matricula: "63277", nome: "Renato Fagner Foureaux" },
+    { matricula: "61313", nome: "Renis Mendes Goulart" },
+    { matricula: "66642", nome: "Ricardo da Silva Matos" },
+    { matricula: "61834", nome: "Roberto Carlos Vieira Martins" },
+    { matricula: "60551", nome: "Rodolfo Ribeiro Martins" },
+    { matricula: "66647", nome: "Romeu Malagoli dos Santos" },
+    { matricula: "61091", nome: "Sebastião Dirino Correia" },
+    { matricula: "61367", nome: "Sueimer Batista Pereira" },
+    { matricula: "61938", nome: "Wender Bortoloto da Costa" },
+    { matricula: "61124", nome: "Valdemi Amancio Do Nascimento" },
+    { matricula: "215640", nome: "Renato Basílio dos Santos Júnior" },
+    { matricula: "208408", nome: "Rafael da Silva Moreira" }
+];
+const colaboradoresDisponiveis = colaboradores.map(({ nome }) => nome);
 
 function normalizarTexto(texto) {
     return texto
@@ -89,7 +120,17 @@ function fecharSugestoes() {
     });
 }
 
-function mostrarSugestoes(input, opcoes) {
+function buscarColaboradorPorNome(nome) {
+    const nomeNormalizado = normalizarTexto(nome.trim());
+    return colaboradores.find((colaborador) => normalizarTexto(colaborador.nome) === nomeNormalizado);
+}
+
+function atualizarMatriculaPorNome(nome) {
+    const colaborador = buscarColaboradorPorNome(nome);
+    matriculaInput.value = colaborador ? colaborador.matricula : "";
+}
+
+function mostrarSugestoes(input, opcoes, aoSelecionar) {
     const wrapper = input.closest(".autocomplete-wrapper");
     const lista = wrapper.querySelector(".atividade-sugestoes");
     const busca = normalizarTexto(input.value.trim());
@@ -111,6 +152,9 @@ function mostrarSugestoes(input, opcoes) {
 
         botao.addEventListener("mousedown", () => {
             input.value = opcao;
+            if (aoSelecionar) {
+                aoSelecionar(opcao);
+            }
             fecharSugestoes();
         });
 
@@ -120,9 +164,14 @@ function mostrarSugestoes(input, opcoes) {
     lista.hidden = false;
 }
 
-function configurarAutocomplete(input, opcoes) {
-    input.addEventListener("input", () => mostrarSugestoes(input, opcoes));
-    input.addEventListener("focus", () => mostrarSugestoes(input, opcoes));
+function configurarAutocomplete(input, opcoes, aoSelecionar, aoDigitar) {
+    input.addEventListener("input", () => {
+        mostrarSugestoes(input, opcoes, aoSelecionar);
+        if (aoDigitar) {
+            aoDigitar(input.value);
+        }
+    });
+    input.addEventListener("focus", () => mostrarSugestoes(input, opcoes, aoSelecionar));
 }
 
 function configurarDocumento(input) {
@@ -408,7 +457,7 @@ async function buscarDocumentoTfm() {
 }
 
 document.querySelectorAll(".atividade-input").forEach((input) => configurarAutocomplete(input, atividadesDisponiveis));
-document.querySelectorAll(".colaborador-input").forEach((input) => configurarAutocomplete(input, colaboradoresDisponiveis));
+document.querySelectorAll(".colaborador-input").forEach((input) => configurarAutocomplete(input, colaboradoresDisponiveis, atualizarMatriculaPorNome, atualizarMatriculaPorNome));
 document.querySelectorAll(".documento-input").forEach(configurarDocumento);
 
 document.addEventListener("mousedown", (event) => {
