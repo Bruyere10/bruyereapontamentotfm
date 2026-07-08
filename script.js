@@ -55,7 +55,7 @@ const atividadesDisponiveis = [
     "Outros - Atividade curta",
     "Outros - Atividade média",
     "Outros - Atividade longa",
-    "Nova atividade"
+    "Alinhamento de motor em cela"
 ];
 
 const btnAdd = document.querySelector(".btn-add");
