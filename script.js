@@ -55,19 +55,25 @@ const atividadesDisponiveis = [
     "Outros - Atividade curta",
     "Outros - Atividade média",
     "Outros - Atividade longa",
-    "Alinhamento de motor em cela"
+    "Alinhamento de motor em cela",
+    "TFM Cancelada"
 ];
 
 const btnAdd = document.querySelector(".btn-add");
 const btnSalvar = document.querySelector(".btn-salvar");
 const btnBuscar = document.querySelector(".btn-buscar");
+const btnAbrirSugestao = document.querySelector(".btn-abrir-sugestao");
+const btnSugerirAtividade = document.querySelector(".btn-sugerir-atividade");
 const form = document.getElementById("form-apontamento");
 const container = document.getElementById("atividades-lista");
 const detalhesContainer = document.getElementById("detalhes-lista");
 const buscaTfmInput = document.getElementById("busca-tfm");
+const sugestaoAtividadeInput = document.getElementById("sugestao-atividade");
+const sugestaoObservacaoInput = document.getElementById("sugestao-observacao");
 const resultadoBusca = document.getElementById("resultado-busca");
 const modalTfm = document.getElementById("modal-tfm");
 const modalTfmConteudo = document.getElementById("modal-tfm-conteudo");
+const modalSugestao = document.getElementById("modal-sugestao");
 const modalHelp = document.getElementById("modal-help");
 const btnHelp = document.querySelector(".btn-help");
 const matriculaInput = document.getElementById("matricula");
@@ -290,6 +296,16 @@ function alterarEstadoBuscando(estaBuscando) {
     texto.textContent = estaBuscando ? "Buscando..." : "Buscar TFM";
 }
 
+function alterarEstadoSugestao(estaEnviando) {
+    const icone = btnSugerirAtividade.querySelector("i");
+    const texto = btnSugerirAtividade.querySelector("span");
+
+    btnSugerirAtividade.disabled = estaEnviando;
+    btnSugerirAtividade.classList.toggle("salvando", estaEnviando);
+    icone.className = estaEnviando ? "bi bi-gear-fill" : "bi bi-send";
+    texto.textContent = estaEnviando ? "Enviando..." : "Enviar sugestão";
+}
+
 function mostrarResultadoBusca(conteudo, tipo = "sucesso") {
     resultadoBusca.hidden = false;
     resultadoBusca.className = `resultado-busca resultado-busca-${tipo}`;
@@ -322,6 +338,17 @@ function abrirModalHelp() {
 
 function fecharModalHelp() {
     modalHelp.hidden = true;
+    document.body.classList.remove("modal-aberto");
+}
+
+function abrirModalSugestao() {
+    modalSugestao.hidden = false;
+    document.body.classList.add("modal-aberto");
+    sugestaoAtividadeInput.focus();
+}
+
+function fecharModalSugestao() {
+    modalSugestao.hidden = true;
     document.body.classList.remove("modal-aberto");
 }
 
@@ -456,6 +483,62 @@ async function buscarDocumentoTfm() {
     }
 }
 
+async function enviarSugestaoAtividade() {
+    const atividade = sugestaoAtividadeInput.value.trim();
+    const observacao = sugestaoObservacaoInput.value.trim();
+
+    if (atividade.length < 3) {
+        alert("Digite uma atividade sugerida antes de enviar.");
+        sugestaoAtividadeInput.focus();
+        return;
+    }
+
+    try {
+        alterarEstadoSugestao(true);
+
+        const dados = {
+            acao: "sugerirAtividade",
+            atividade,
+            observacao,
+            sugestaoAtividade: atividade,
+            observacaoAtividade: observacao,
+            colunaAtividade: "E",
+            colunaObservacao: "F",
+            dataSugestao: new Date().toISOString(),
+            nome: document.getElementById("nome").value,
+            matricula: document.getElementById("matricula").value
+        };
+
+        const resposta = await fetch(SCRIPT_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "text/plain;charset=utf-8"
+            },
+            body: JSON.stringify(dados)
+        });
+
+        if (!resposta.ok) {
+            throw new Error("Erro ao enviar a sugestão para o Apps Script.");
+        }
+
+        const resultado = await resposta.json();
+
+        if (!resultado.sucesso) {
+            throw new Error(resultado.erro || "Erro ao salvar sugestão.");
+        }
+
+        alert("Sugestão enviada com sucesso!");
+        sugestaoAtividadeInput.value = "";
+        sugestaoObservacaoInput.value = "";
+        fecharModalSugestao();
+    } catch (erro) {
+        alert(erro.message || "Erro ao enviar sugestão!");
+        console.error(erro);
+    } finally {
+        alterarEstadoSugestao(false);
+    }
+}
+
 document.querySelectorAll(".atividade-input").forEach((input) => configurarAutocomplete(input, atividadesDisponiveis));
 document.querySelectorAll(".colaborador-input").forEach((input) => configurarAutocomplete(input, colaboradoresDisponiveis, atualizarMatriculaPorNome, atualizarMatriculaPorNome));
 document.querySelectorAll(".documento-input").forEach(configurarDocumento);
@@ -474,10 +557,19 @@ btnAdd.addEventListener("click", () => {
 });
 
 btnBuscar.addEventListener("click", buscarDocumentoTfm);
+btnAbrirSugestao.addEventListener("click", abrirModalSugestao);
+btnSugerirAtividade.addEventListener("click", enviarSugestaoAtividade);
 buscaTfmInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
         event.preventDefault();
         buscarDocumentoTfm();
+    }
+});
+
+sugestaoAtividadeInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        enviarSugestaoAtividade();
     }
 });
 
@@ -489,6 +581,10 @@ document.querySelectorAll("[data-fechar-help]").forEach((elemento) => {
     elemento.addEventListener("click", fecharModalHelp);
 });
 
+document.querySelectorAll("[data-fechar-sugestao]").forEach((elemento) => {
+    elemento.addEventListener("click", fecharModalSugestao);
+});
+
 btnHelp.addEventListener("click", abrirModalHelp);
 
 document.addEventListener("keydown", (event) => {
@@ -498,6 +594,10 @@ document.addEventListener("keydown", (event) => {
 
     if (event.key === "Escape" && !modalHelp.hidden) {
         fecharModalHelp();
+    }
+
+    if (event.key === "Escape" && !modalSugestao.hidden) {
+        fecharModalSugestao();
     }
 });
 

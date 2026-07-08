@@ -17,16 +17,49 @@ body.modal-aberto{
 /* HEADER */
 
 .header{
-    width:100%;
-    height:96px;
+    align-items:center;
     background:#001E62;
     display:flex;
+    min-height:58px;
+    width:100%;
+}
+
+.header-inner{
     align-items:center;
-    padding-left:calc((100% - 1180px) / 2 + 20px);
+    display:flex;
+    justify-content:space-between;
+    margin:auto;
+    max-width:1180px;
+    padding:8px 20px;
+    width:100%;
 }
 
 .logo{
-    width:210px;
+    width:175px;
+}
+
+.btn-abrir-sugestao{
+    align-items:center;
+    background:#eef4ff;
+    border:1px solid rgba(255,255,255,0.5);
+    border-radius:10px;
+    box-shadow:0 12px 24px rgba(0,0,0,0.18);
+    color:#001E62;
+    cursor:pointer;
+    display:flex;
+    font-size:13px;
+    font-weight:bold;
+    gap:6px;
+    min-height:32px;
+    padding:6px 10px;
+    transition:0.25s;
+}
+
+.btn-abrir-sugestao:hover,
+.btn-abrir-sugestao:focus{
+    background:white;
+    outline:none;
+    transform:translateY(-1px);
 }
 
 /* CONTAINER */
@@ -395,6 +428,10 @@ body.modal-aberto{
     max-width:820px;
 }
 
+.modal-sugestao-painel{
+    max-width:620px;
+}
+
 .modal-tfm-topo{
     align-items:center;
     background:#001E62;
@@ -634,10 +671,16 @@ body.modal-aberto{
     width:100%;
 }
 
+.sugestao-atividade-conteudo{
+    display:grid;
+    gap:14px;
+}
+
 .btn-add,
 .btn-salvar,
 .btn-buscar,
-.btn-abrir-pdf{
+.btn-abrir-pdf,
+.btn-sugerir-atividade{
     border:none;
     min-height:50px;
     padding:14px 24px;
@@ -661,16 +704,25 @@ body.modal-aberto{
 .btn-add i,
 .btn-salvar i,
 .btn-buscar i,
-.btn-abrir-pdf i{
+.btn-abrir-pdf i,
+.btn-sugerir-atividade i{
     color:inherit;
 }
 
 .btn-salvar,
 .btn-buscar,
-.btn-abrir-pdf{
+.btn-abrir-pdf,
+.btn-sugerir-atividade{
     background:#001E62;
     color:white;
     box-shadow:0 12px 24px rgba(0,30,98,0.18);
+}
+
+.btn-sugerir-atividade{
+    justify-content:center;
+    min-height:44px;
+    padding:12px 18px;
+    width:max-content;
 }
 
 .btn-abrir-pdf{
@@ -683,24 +735,28 @@ body.modal-aberto{
 .btn-add:hover,
 .btn-salvar:hover,
 .btn-buscar:hover,
-.btn-abrir-pdf:hover{
+.btn-abrir-pdf:hover,
+.btn-sugerir-atividade:hover{
     transform:translateY(-2px);
     opacity:0.95;
 }
 
 .btn-salvar:disabled,
-.btn-buscar:disabled{
+.btn-buscar:disabled,
+.btn-sugerir-atividade:disabled{
     cursor:not-allowed;
     opacity:0.75;
 }
 
 .btn-salvar:disabled:hover,
-.btn-buscar:disabled:hover{
+.btn-buscar:disabled:hover,
+.btn-sugerir-atividade:disabled:hover{
     transform:none;
 }
 
 .btn-salvar.salvando i,
-.btn-buscar.salvando i{
+.btn-buscar.salvando i,
+.btn-sugerir-atividade.salvando i{
     animation:girar 1s linear infinite;
 }
 
@@ -874,13 +930,25 @@ select{
     .resultado-documento,
     .resultado-tfm-cabecalho,
     .btn-buscar,
-    .btn-abrir-pdf{
+    .btn-abrir-pdf,
+    .btn-sugerir-atividade{
         width:100%;
     }
 
     .header{
+        min-height:auto;
+    }
+
+    .header-inner{
+        align-items:center;
+        flex-direction:column;
+        gap:14px;
         justify-content:center;
-        padding-left:0;
+    }
+
+    .btn-abrir-sugestao{
+        justify-content:center;
+        width:auto;
     }
 
 }

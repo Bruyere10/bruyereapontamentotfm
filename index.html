@@ -13,8 +13,56 @@
 
 <body>
     <header class="header">
-        <img src="logo.png" class="logo" alt="Stellantis">
+        <div class="header-inner">
+            <img src="logo.png" class="logo" alt="Stellantis">
+
+            <button type="button" class="btn-abrir-sugestao">
+                <i class="bi bi-lightbulb"></i>
+                <span>Sugerir atividade</span>
+            </button>
+        </div>
     </header>
+
+    <div id="modal-sugestao" class="modal-tfm" hidden>
+        <div class="modal-tfm-backdrop" data-fechar-sugestao></div>
+        <section class="modal-tfm-painel modal-sugestao-painel" role="dialog" aria-modal="true" aria-labelledby="modal-sugestao-titulo">
+            <div class="modal-tfm-topo">
+                <div>
+                    <span>Sugestão de atividade</span>
+                    <h2 id="modal-sugestao-titulo">Enviar nova atividade</h2>
+                </div>
+
+                <button type="button" class="btn-fechar-modal" aria-label="Fechar sugestão" data-fechar-sugestao>
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <div class="modal-tfm-conteudo">
+                <div class="sugestao-atividade-conteudo">
+                    <div class="campo">
+                        <label for="sugestao-atividade">Atividade sugerida</label>
+                        <div class="input-icon">
+                            <i class="bi bi-list-plus"></i>
+                            <input id="sugestao-atividade" type="text" placeholder="Digite a atividade que ainda não aparece na lista">
+                        </div>
+                    </div>
+
+                    <div class="campo">
+                        <label for="sugestao-observacao">Observação</label>
+                        <div class="input-icon">
+                            <i class="bi bi-chat-left-text"></i>
+                            <input id="sugestao-observacao" type="text" placeholder="Opcional: detalhe quando essa atividade deve ser usada">
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn-sugerir-atividade">
+                        <i class="bi bi-send"></i>
+                        <span>Enviar sugestão</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </div>
 
     <main class="main-container">
         <form id="form-apontamento">
@@ -140,6 +188,22 @@
                                 <div>
                                     <strong>Consulte um TFM</strong>
                                     <p>Use o campo Consultar TFM no topo para ver dados, atividades registradas e abrir o PDF quando existir.</p>
+                                </div>
+                            </div>
+
+                            <div class="help-item">
+                                <span>07</span>
+                                <div>
+                                    <strong>Sugira uma atividade</strong>
+                                    <p>Se a atividade não aparecer na lista, use o botão Sugerir atividade no topo da tela para enviar uma nova sugestão.</p>
+                                </div>
+                            </div>
+
+                            <div class="help-item">
+                                <span>08</span>
+                                <div>
+                                    <strong>Dúvidas</strong>
+                                    <p>Caso ainda estiver em dúvidas, entre em contato com a liderança.</p>
                                 </div>
                             </div>
                         </div>

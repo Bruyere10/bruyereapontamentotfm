@@ -1,0 +1,292 @@
+const CONFIG = {
+  planilhaId: "1B_ER15kHjnoiRcVNeVL6UVsbD-6tttgiKr4Ph22SHeo",
+  nomeAba: "Página1",
+  nomeAbaSugestoes: "Códigos",
+  pastaDriveId: "1Qq8X2VhghaBkM712AqX-yPoKmD_TUn0L",
+  permitirAcessoPorLink: true
+};
+
+const CABECALHOS = [
+  "DATA",
+  "NOME",
+  "MATRÍCULA",
+  "TURNO",
+  "TFM",
+  "PROJETO",
+  "ATIVIDADE",
+  "HORAS",
+  "OBSERVAÇÃO",
+  "NOME DO PDF",
+  "LINK DO PDF"
+];
+
+const CABECALHOS_SUGESTOES = [
+  "SUGESTÃO DE ATIVIDADE",
+  "OBSERVAÇÃO ATIVIDADE"
+];
+
+const COLUNA_INICIAL_SUGESTOES = 5;
+
+function doPost(evento) {
+  try {
+    const dados = JSON.parse(evento.postData.contents || "{}");
+
+    if (dados.acao === "sugerirAtividade") {
+      return salvarSugestaoAtividade(dados);
+    }
+
+    const planilha = obterAbaPrincipal();
+    const documento = salvarDocumentoNoDrive(dados);
+    const atividades = Array.isArray(dados.atividades) && dados.atividades.length > 0
+      ? dados.atividades
+      : [{ atividade: "", horas: "", observacao: "" }];
+
+    const linhas = atividades.map((atividade) => [
+      dados.data || "",
+      dados.nome || "",
+      dados.matricula || "",
+      dados.turno || "",
+      dados.tfm || "",
+      dados.projeto || "",
+      atividade.atividade || "",
+      atividade.horas || "",
+      atividade.observacao || "",
+      documento.nome || "",
+      documento.url || ""
+    ]);
+
+    planilha.getRange(planilha.getLastRow() + 1, 1, linhas.length, CABECALHOS.length).setValues(linhas);
+
+    return responderJson({
+      sucesso: true,
+      documento: documento.url
+        ? {
+            nome: documento.nome,
+            url: documento.url,
+            id: documento.id
+          }
+        : null
+    });
+  } catch (erro) {
+    return responderJson({
+      sucesso: false,
+      erro: erro.message || "Erro ao salvar apontamento."
+    });
+  }
+}
+
+function salvarSugestaoAtividade(dados) {
+  try {
+    const aba = obterAbaSugestoes();
+
+    aba.getRange(aba.getLastRow() + 1, COLUNA_INICIAL_SUGESTOES, 1, CABECALHOS_SUGESTOES.length).setValues([[
+      dados.atividade || "",
+      dados.observacao || ""
+    ]]);
+
+    return responderJson({
+      sucesso: true
+    });
+  } catch (erro) {
+    return responderJson({
+      sucesso: false,
+      erro: erro.message || "Erro ao salvar sugestao de atividade."
+    });
+  }
+}
+
+function doGet(evento) {
+  try {
+    const parametros = evento.parameter || {};
+
+    if (parametros.acao !== "buscarTfm") {
+      return responderJson({ sucesso: false, erro: "Acao invalida." });
+    }
+
+    const tfm = String(parametros.tfm || "").trim();
+
+    if (!/^\d{6}$/.test(tfm)) {
+      return responderJson({ sucesso: false, erro: "TFM invalido." });
+    }
+
+    return responderJson(buscarDocumentoPorTfm(tfm));
+  } catch (erro) {
+    return responderJson({
+      sucesso: false,
+      erro: erro.message || "Erro ao consultar TFM."
+    });
+  }
+}
+
+function obterArquivoPlanilha() {
+  const arquivo = CONFIG.planilhaId
+    ? SpreadsheetApp.openById(CONFIG.planilhaId)
+    : SpreadsheetApp.getActiveSpreadsheet();
+
+  if (!arquivo) {
+    throw new Error("Informe CONFIG.planilhaId ou publique este codigo em um Apps Script vinculado a uma planilha.");
+  }
+
+  return arquivo;
+}
+
+function obterAbaPrincipal() {
+  const arquivo = obterArquivoPlanilha();
+  const aba = arquivo.getSheetByName(CONFIG.nomeAba) || arquivo.insertSheet(CONFIG.nomeAba);
+
+  if (aba.getLastRow() === 0) {
+    aba.appendRow(CABECALHOS);
+  }
+
+  return aba;
+}
+
+function obterAbaSugestoes() {
+  const arquivo = obterArquivoPlanilha();
+  const aba = arquivo.getSheetByName(CONFIG.nomeAbaSugestoes) || arquivo.insertSheet(CONFIG.nomeAbaSugestoes);
+
+  if (aba.getLastRow() === 0) {
+    aba.getRange(1, COLUNA_INICIAL_SUGESTOES, 1, CABECALHOS_SUGESTOES.length).setValues([CABECALHOS_SUGESTOES]);
+  }
+
+  return aba;
+}
+
+function salvarDocumentoNoDrive(dados) {
+  const documento = dados.documento;
+
+  if (!documento || !documento.conteudoBase64) {
+    return {};
+  }
+
+  if (documento.tipo !== "application/pdf") {
+    throw new Error("Anexe apenas arquivos PDF.");
+  }
+
+  if (Number(documento.tamanho) > 5 * 1024 * 1024) {
+    throw new Error("O PDF deve ter no maximo 5 MB.");
+  }
+
+  const bytes = Utilities.base64Decode(documento.conteudoBase64);
+  const nomeArquivo = criarNomeArquivoPdf(dados.tfm, documento.nome);
+  const blob = Utilities.newBlob(bytes, documento.tipo, nomeArquivo);
+  const pasta = obterPastaDestino();
+  const arquivo = pasta.createFile(blob);
+
+  if (CONFIG.permitirAcessoPorLink) {
+    try {
+      arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (erro) {
+      console.warn(`Nao foi possivel liberar o PDF por link: ${erro.message}`);
+    }
+  }
+
+  return {
+    nome: arquivo.getName(),
+    url: arquivo.getUrl(),
+    id: arquivo.getId(),
+    tamanho: documento.tamanho
+  };
+}
+
+function obterPastaDestino() {
+  if (CONFIG.pastaDriveId) {
+    return DriveApp.getFolderById(CONFIG.pastaDriveId);
+  }
+
+  return DriveApp.getRootFolder();
+}
+
+function criarNomeArquivoPdf(tfm, nomeOriginal) {
+  const nomeSeguro = String(nomeOriginal || "documento.pdf").replace(/[\\/:*?"<>|]/g, "-");
+  const prefixo = /^\d{6}$/.test(String(tfm || "")) ? `${tfm} - ` : "";
+
+  return `${prefixo}${nomeSeguro}`;
+}
+
+function buscarDocumentoPorTfm(tfm) {
+  const aba = obterAbaPrincipal();
+  const dados = aba.getDataRange().getValues();
+  const cabecalhos = dados[0] || [];
+  const colunaData = obterIndiceCabecalho(cabecalhos, ["Data"]);
+  const colunaTurno = obterIndiceCabecalho(cabecalhos, ["Turno"]);
+  const colunaNome = obterIndiceCabecalho(cabecalhos, ["Nome", "Nome do Colaborador", "Colaborador"]);
+  const colunaMatricula = obterIndiceCabecalho(cabecalhos, ["Matricula", "Matrícula"]);
+  const colunaTfm = obterIndiceCabecalho(cabecalhos, ["TFM", "Numero do TFM", "Número do TFM"]);
+  const colunaProjeto = obterIndiceCabecalho(cabecalhos, ["Projeto", "Codigo do Projeto", "Código do Projeto"]);
+  const colunaAtividade = obterIndiceCabecalho(cabecalhos, ["Atividade", "Atividade Realizada"]);
+  const colunaHoras = obterIndiceCabecalho(cabecalhos, ["Horas", "Horas Trabalhadas"]);
+  const colunaObservacao = obterIndiceCabecalho(cabecalhos, ["Observacao", "Observação", "Observacao da atividade", "Observação da atividade"]);
+  const colunaNomePdf = obterIndiceCabecalho(cabecalhos, ["Nome do PDF", "PDF", "Nome Documento", "Nome do Documento"]);
+  const colunaLinkPdf = obterIndiceCabecalho(cabecalhos, ["Link do PDF", "Link PDF", "URL do PDF", "Documento", "Link do Documento"]);
+
+  if (colunaTfm === -1) {
+    throw new Error("Cabecalhos da planilha nao encontrados.");
+  }
+
+  const registros = [];
+  let resumo = null;
+
+  for (let indice = dados.length - 1; indice >= 1; indice -= 1) {
+    const linha = dados[indice];
+    const tfmLinha = String(linha[colunaTfm] || "").trim();
+
+    if (tfmLinha !== tfm) {
+      continue;
+    }
+
+    if (!resumo) {
+      resumo = {
+        data: colunaData >= 0 ? linha[colunaData] : "",
+        turno: colunaTurno >= 0 ? linha[colunaTurno] : "",
+        nome: colunaNome >= 0 ? linha[colunaNome] : "",
+        matricula: colunaMatricula >= 0 ? linha[colunaMatricula] : "",
+        projeto: colunaProjeto >= 0 ? linha[colunaProjeto] : "",
+        nomeDocumento: colunaNomePdf >= 0 ? linha[colunaNomePdf] : "",
+        urlDocumento: colunaLinkPdf >= 0 ? linha[colunaLinkPdf] : ""
+      };
+    }
+
+    registros.unshift({
+      atividade: colunaAtividade >= 0 ? linha[colunaAtividade] : "",
+      horas: colunaHoras >= 0 ? linha[colunaHoras] : "",
+      observacao: colunaObservacao >= 0 ? linha[colunaObservacao] : ""
+    });
+  }
+
+  if (resumo) {
+    return Object.assign({
+      sucesso: true,
+      encontrado: true,
+      tfm,
+      registros
+    }, resumo);
+  }
+
+  return {
+    sucesso: true,
+    encontrado: false,
+    tfm
+  };
+}
+
+function obterIndiceCabecalho(cabecalhos, nomes) {
+  const nomesNormalizados = nomes.map(normalizarCabecalho);
+
+  return cabecalhos.findIndex((cabecalho) => nomesNormalizados.includes(normalizarCabecalho(cabecalho)));
+}
+
+function normalizarCabecalho(valor) {
+  return String(valor || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function responderJson(conteudo) {
+  return ContentService
+    .createTextOutput(JSON.stringify(conteudo))
+    .setMimeType(ContentService.MimeType.JSON);
+}
