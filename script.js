@@ -74,10 +74,22 @@ const resultadoBusca = document.getElementById("resultado-busca");
 const modalTfm = document.getElementById("modal-tfm");
 const modalTfmConteudo = document.getElementById("modal-tfm-conteudo");
 const modalSugestao = document.getElementById("modal-sugestao");
+const modalAtividade = document.getElementById("modal-atividade");
 const modalHelp = document.getElementById("modal-help");
 const btnHelp = document.querySelector(".btn-help");
+const btnConfirmarAtividade = document.querySelector(".btn-confirmar-atividade");
 const matriculaInput = document.getElementById("matricula");
+const modalAtividadeInput = document.getElementById("modal-atividade-input");
+const modalHorasInput = document.getElementById("modal-horas-input");
+const modalObservacaoInput = document.getElementById("modal-observacao-input");
+const feedbackGlobal = document.getElementById("feedback-global");
+const resumoAtividades = document.getElementById("resumo-atividades");
+const resumoSalvos = document.getElementById("resumo-salvos");
+const historicoLista = document.getElementById("historico-lista");
+const HISTORICO_CHAVE = "stellantisHistoricoApontamentos";
+const LIMITE_HISTORICO = 2;
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycpTr1Vj5nCByX2gYKvaXnhw7EiBUYqlnRq7ClSoqr2ZNBNvAUqvW2br6ksyAJDcxO/exec";
+let resumoPlanilhaCarregado = false;
 const colaboradores = [
     { matricula: "87033", nome: "Leonel Barros Pereira Da Silva" },
     { matricula: "61449", nome: "Ailton Dos Reis Santana" },
@@ -124,6 +136,155 @@ function fecharSugestoes() {
         lista.hidden = true;
         lista.innerHTML = "";
     });
+}
+
+function mostrarFeedback(mensagem, tipo = "sucesso") {
+    feedbackGlobal.hidden = false;
+    feedbackGlobal.className = `feedback-global ${tipo}`;
+    feedbackGlobal.textContent = mensagem;
+    feedbackGlobal.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function limparFeedback() {
+    feedbackGlobal.hidden = true;
+    feedbackGlobal.textContent = "";
+}
+
+function marcarCampo(input, invalido) {
+    input.closest(".input-icon")?.classList.toggle("campo-invalido", invalido);
+}
+
+function limitarParaNumeros(input, limite) {
+    input.value = input.value.replace(/\D/g, "").slice(0, limite);
+}
+
+function obterHistorico() {
+    try {
+        return JSON.parse(localStorage.getItem(HISTORICO_CHAVE)) || [];
+    } catch (erro) {
+        return [];
+    }
+}
+
+function salvarHistorico(item) {
+    const historico = obterHistorico();
+    const novosItens = Array.isArray(item) ? item : [item];
+    const atualizado = [...novosItens, ...historico].slice(0, LIMITE_HISTORICO);
+    localStorage.setItem(HISTORICO_CHAVE, JSON.stringify(atualizado));
+}
+
+function configurarDataAtual() {
+    const dataInput = document.getElementById("data");
+
+    if (!dataInput.value) {
+        dataInput.value = new Date().toISOString().slice(0, 10);
+    }
+}
+
+function calcularTotalHoras() {
+    return Array.from(document.querySelectorAll(".horas-input"))
+        .reduce((total, input) => total + Number(input.value || 0), 0);
+}
+
+function atualizarResumo() {
+    if (resumoPlanilhaCarregado) {
+        return;
+    }
+
+    resumoAtividades.textContent = "...";
+    resumoSalvos.textContent = "-";
+}
+
+async function carregarResumoPlanilha() {
+    try {
+        const resposta = await fetch(`${SCRIPT_URL}?acao=resumoGeral`);
+
+        if (!resposta.ok) {
+            throw new Error("Erro ao consultar resumo da planilha.");
+        }
+
+        const dados = await resposta.json();
+
+        if (!dados.sucesso) {
+            throw new Error(dados.erro || "Erro ao carregar resumo da planilha.");
+        }
+
+        resumoPlanilhaCarregado = true;
+        resumoAtividades.textContent = Number(dados.totalAtividades || 0).toLocaleString("pt-BR");
+        resumoSalvos.textContent = Number(dados.totalTfms || 0).toLocaleString("pt-BR");
+    } catch (erro) {
+        resumoPlanilhaCarregado = false;
+        resumoAtividades.textContent = "-";
+        resumoSalvos.textContent = "-";
+        console.error(erro);
+    }
+}
+
+function renderizarHistorico(historico = obterHistorico()) {
+    historicoLista.innerHTML = "";
+
+    if (historico.length === 0) {
+        const vazio = document.createElement("p");
+        vazio.className = "historico-vazio";
+        vazio.textContent = "Nenhuma atividade encontrada na planilha ainda.";
+        historicoLista.appendChild(vazio);
+        atualizarResumo();
+        return;
+    }
+
+    historico.slice(0, LIMITE_HISTORICO).forEach((item) => {
+        const registro = document.createElement("article");
+        const info = document.createElement("div");
+        const atividade = document.createElement("strong");
+        const detalhes = document.createElement("span");
+        const tfm = document.createElement("span");
+        const horas = document.createElement("span");
+
+        registro.className = "historico-item";
+        atividade.textContent = item.atividade || `Registro anterior com ${item.atividades || 1} atividade(s)`;
+        detalhes.textContent = [item.nome, formatarData(item.data)].filter(Boolean).join(" - ");
+        tfm.textContent = `TFM ${item.tfm}`;
+        horas.textContent = `${item.horas}h`;
+
+        info.appendChild(atividade);
+        info.appendChild(detalhes);
+        registro.appendChild(info);
+        registro.appendChild(tfm);
+        registro.appendChild(horas);
+        historicoLista.appendChild(registro);
+    });
+
+    atualizarResumo();
+}
+
+async function carregarHistoricoPlanilha() {
+    try {
+        const resposta = await fetch(`${SCRIPT_URL}?acao=historicoRecentes&limite=${LIMITE_HISTORICO}`);
+
+        if (!resposta.ok) {
+            throw new Error("Erro ao consultar histórico da planilha.");
+        }
+
+        const dados = await resposta.json();
+
+        if (!dados.sucesso) {
+            throw new Error(dados.erro || "Erro ao carregar histórico da planilha.");
+        }
+
+        renderizarHistorico(Array.isArray(dados.historico) ? dados.historico : []);
+    } catch (erro) {
+        console.error(erro);
+        renderizarHistorico();
+    }
+}
+
+function renumerarAtividades() {
+    document.querySelectorAll(".detalhes-item").forEach((item, index) => {
+        const indice = index + 1;
+        item.querySelector(".bloco-numero").textContent = String(indice).padStart(2, "0");
+        item.querySelector(".bloco-cabecalho strong").textContent = `Atividade realizada ${indice}`;
+    });
+    atualizarResumo();
 }
 
 function buscarColaboradorPorNome(nome) {
@@ -196,7 +357,12 @@ function criarDetalhesItem(indice) {
     novoDetalhe.innerHTML = `
         <div class="bloco-cabecalho">
             <span class="bloco-numero">${numeroFormatado}</span>
-            <strong>Atividade realizada ${indice}</strong>
+            <div class="bloco-cabecalho-titulo">
+                <strong>Atividade realizada ${indice}</strong>
+            </div>
+            <button type="button" class="btn-remover-atividade" aria-label="Remover atividade ${indice}">
+                <i class="bi bi-trash3"></i>
+            </button>
         </div>
 
         <div class="detalhes-grid">
@@ -215,7 +381,7 @@ function criarDetalhesItem(indice) {
                 <label for="horas-${indice}">Horas Trabalhadas</label>
                 <div class="input-icon">
                     <i class="bi bi-clock-history"></i>
-                    <input id="horas-${indice}" name="horas[]" type="number" class="horas-input" min="0" step="0.1" placeholder="Ex: 2.5" required>
+                    <input id="horas-${indice}" name="horas[]" type="number" class="horas-input" min="0.1" max="24" step="0.1" placeholder="Ex: 2.5" required>
                 </div>
             </div>
 
@@ -307,14 +473,24 @@ function alterarEstadoSugestao(estaEnviando) {
 }
 
 function mostrarResultadoBusca(conteudo, tipo = "sucesso") {
+    const cardHistorico = document.querySelector(".card-historico");
+
     resultadoBusca.hidden = false;
     resultadoBusca.className = `resultado-busca resultado-busca-${tipo}`;
+    resultadoBusca.closest(".card-busca").classList.add("tem-resultado-busca");
+    cardHistorico.style.position = "relative";
+    cardHistorico.style.top = "86px";
     resultadoBusca.innerHTML = "";
     resultadoBusca.appendChild(conteudo);
 }
 
 function limparResultadoBusca() {
+    const cardHistorico = document.querySelector(".card-historico");
+
     resultadoBusca.hidden = true;
+    resultadoBusca.closest(".card-busca").classList.remove("tem-resultado-busca");
+    cardHistorico.style.position = "";
+    cardHistorico.style.top = "";
     resultadoBusca.innerHTML = "";
 }
 
@@ -350,6 +526,48 @@ function abrirModalSugestao() {
 function fecharModalSugestao() {
     modalSugestao.hidden = true;
     document.body.classList.remove("modal-aberto");
+}
+
+function abrirModalAtividade() {
+    modalAtividade.hidden = false;
+    document.body.classList.add("modal-aberto");
+    modalAtividadeInput.focus();
+}
+
+function fecharModalAtividade() {
+    modalAtividade.hidden = true;
+    modalAtividadeInput.value = "";
+    modalHorasInput.value = "";
+    modalObservacaoInput.value = "";
+    marcarCampo(modalAtividadeInput, false);
+    marcarCampo(modalHorasInput, false);
+    fecharSugestoes();
+    document.body.classList.remove("modal-aberto");
+}
+
+function adicionarAtividadeDoModal() {
+    const atividade = modalAtividadeInput.value.trim();
+    const horas = Number(modalHorasInput.value);
+
+    marcarCampo(modalAtividadeInput, !atividade);
+    marcarCampo(modalHorasInput, !modalHorasInput.value || horas <= 0);
+
+    if (!atividade || !modalHorasInput.value || horas <= 0) {
+        mostrarFeedback("Informe a atividade e as horas antes de adicionar.", "erro");
+        return;
+    }
+
+    const indice = document.querySelectorAll(".detalhes-item").length + 1;
+    const novoDetalhe = criarDetalhesItem(indice);
+
+    novoDetalhe.querySelector(".atividade-input").value = atividade;
+    novoDetalhe.querySelector(".horas-input").value = modalHorasInput.value;
+    novoDetalhe.querySelector(".observacao-input").value = modalObservacaoInput.value.trim();
+    detalhesContainer.appendChild(novoDetalhe);
+    configurarAutocomplete(novoDetalhe.querySelector(".atividade-input"), atividadesDisponiveis);
+    fecharModalAtividade();
+    limparFeedback();
+    atualizarResumo();
 }
 
 function formatarValor(valor) {
@@ -488,7 +706,7 @@ async function enviarSugestaoAtividade() {
     const observacao = sugestaoObservacaoInput.value.trim();
 
     if (atividade.length < 3) {
-        alert("Digite uma atividade sugerida antes de enviar.");
+        mostrarFeedback("Digite uma atividade sugerida antes de enviar.", "erro");
         sugestaoAtividadeInput.focus();
         return;
     }
@@ -527,19 +745,55 @@ async function enviarSugestaoAtividade() {
             throw new Error(resultado.erro || "Erro ao salvar sugestão.");
         }
 
-        alert("Sugestão enviada com sucesso!");
+        mostrarFeedback("Sugestão enviada com sucesso!", "sucesso");
         sugestaoAtividadeInput.value = "";
         sugestaoObservacaoInput.value = "";
         fecharModalSugestao();
     } catch (erro) {
-        alert(erro.message || "Erro ao enviar sugestão!");
+        mostrarFeedback(erro.message || "Erro ao enviar sugestão!", "erro");
         console.error(erro);
     } finally {
         alterarEstadoSugestao(false);
     }
 }
 
+function validarFormulario() {
+    const tfmInput = document.getElementById("tfm");
+    const horasInputs = Array.from(document.querySelectorAll(".horas-input"));
+    let valido = form.checkValidity();
+
+    marcarCampo(tfmInput, !/^[0-9]{6}$/.test(tfmInput.value.trim()));
+
+    horasInputs.forEach((input) => {
+        const horas = Number(input.value);
+        const invalido = !input.value || horas <= 0;
+        marcarCampo(input, invalido);
+        if (invalido) {
+            valido = false;
+        }
+    });
+
+    if (!/^[0-9]{6}$/.test(tfmInput.value.trim())) {
+        valido = false;
+        mostrarFeedback("Informe um número de TFM com exatamente 6 números.", "erro");
+        tfmInput.focus();
+        return false;
+    }
+
+    if (!valido) {
+        const primeiroInvalido = form.querySelector(":invalid") || document.querySelector(".campo-invalido input");
+        mostrarFeedback("Revise os campos obrigatórios antes de salvar.", "erro");
+        if (primeiroInvalido) {
+            primeiroInvalido.focus();
+        }
+        form.reportValidity();
+    }
+
+    return valido;
+}
+
 document.querySelectorAll(".atividade-input").forEach((input) => configurarAutocomplete(input, atividadesDisponiveis));
+configurarAutocomplete(modalAtividadeInput, atividadesDisponiveis);
 document.querySelectorAll(".colaborador-input").forEach((input) => configurarAutocomplete(input, colaboradoresDisponiveis, atualizarMatriculaPorNome, atualizarMatriculaPorNome));
 document.querySelectorAll(".documento-input").forEach(configurarDocumento);
 
@@ -550,15 +804,24 @@ document.addEventListener("mousedown", (event) => {
 });
 
 btnAdd.addEventListener("click", () => {
-    const indice = document.querySelectorAll(".detalhes-item").length + 1;
-    const novoDetalhe = criarDetalhesItem(indice);
-    detalhesContainer.appendChild(novoDetalhe);
-    configurarAutocomplete(novoDetalhe.querySelector(".atividade-input"), atividadesDisponiveis);
+    abrirModalAtividade();
+});
+
+detalhesContainer.addEventListener("click", (event) => {
+    const botaoRemover = event.target.closest(".btn-remover-atividade");
+
+    if (!botaoRemover) {
+        return;
+    }
+
+    botaoRemover.closest(".detalhes-item").remove();
+    renumerarAtividades();
 });
 
 btnBuscar.addEventListener("click", buscarDocumentoTfm);
 btnAbrirSugestao.addEventListener("click", abrirModalSugestao);
 btnSugerirAtividade.addEventListener("click", enviarSugestaoAtividade);
+btnConfirmarAtividade.addEventListener("click", adicionarAtividadeDoModal);
 buscaTfmInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
         event.preventDefault();
@@ -570,6 +833,13 @@ sugestaoAtividadeInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
         event.preventDefault();
         enviarSugestaoAtividade();
+    }
+});
+
+modalAtividade.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        adicionarAtividadeDoModal();
     }
 });
 
@@ -585,7 +855,26 @@ document.querySelectorAll("[data-fechar-sugestao]").forEach((elemento) => {
     elemento.addEventListener("click", fecharModalSugestao);
 });
 
+document.querySelectorAll("[data-fechar-atividade]").forEach((elemento) => {
+    elemento.addEventListener("click", fecharModalAtividade);
+});
+
 btnHelp.addEventListener("click", abrirModalHelp);
+
+document.addEventListener("input", (event) => {
+    if (event.target.matches(".horas-input, #tfm")) {
+        marcarCampo(event.target, false);
+        atualizarResumo();
+    }
+
+    if (event.target.matches("#tfm, #busca-tfm")) {
+        limitarParaNumeros(event.target, 6);
+    }
+
+    if (event.target.matches("#projeto")) {
+        event.target.value = event.target.value.toUpperCase();
+    }
+});
 
 document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !modalTfm.hidden) {
@@ -599,12 +888,21 @@ document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !modalSugestao.hidden) {
         fecharModalSugestao();
     }
+
+    if (event.key === "Escape" && !modalAtividade.hidden) {
+        fecharModalAtividade();
+    }
 });
 
 form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    limparFeedback();
 
     if (btnSalvar.disabled) {
+        return;
+    }
+
+    if (!validarFormulario()) {
         return;
     }
 
@@ -640,8 +938,22 @@ form.addEventListener("submit", async (event) => {
             throw new Error(resultado.erro || "Erro ao salvar apontamento.");
         }
 
-        alert("Apontamento salvo com sucesso!");
+        salvarHistorico(dados.atividades.map((atividade) => ({
+            data: formatarData(dados.data),
+            nome: dados.nome,
+            tfm: dados.tfm,
+            atividade: atividade.atividade,
+            observacao: atividade.observacao,
+            horas: Number(atividade.horas || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 }),
+            salvoEm: new Date().toISOString()
+        })));
+
+        resumoPlanilhaCarregado = false;
+        await carregarResumoPlanilha();
+
+        mostrarFeedback("Apontamento salvo com sucesso!", "sucesso");
         form.reset();
+        configurarDataAtual();
         document.querySelectorAll(".arquivo-nome").forEach((nomeArquivo) => {
             nomeArquivo.textContent = "Nenhum arquivo selecionado";
         });
@@ -657,10 +969,17 @@ form.addEventListener("submit", async (event) => {
                 item.remove();
             }
         });
+        await carregarHistoricoPlanilha();
     } catch (erro) {
-        alert(erro.message || "Erro ao salvar!");
+        mostrarFeedback(erro.message || "Erro ao salvar!", "erro");
         console.error(erro);
     } finally {
         alterarEstadoSalvando(false);
+        atualizarResumo();
     }
 });
+
+configurarDataAtual();
+renderizarHistorico();
+carregarResumoPlanilha();
+carregarHistoricoPlanilha();

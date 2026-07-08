@@ -99,6 +99,15 @@ function doGet(evento) {
   try {
     const parametros = evento.parameter || {};
 
+    if (parametros.acao === "resumoGeral") {
+      return responderJson(buscarResumoGeral());
+    }
+
+    if (parametros.acao === "historicoRecentes") {
+      const limite = Number(parametros.limite || 5);
+      return responderJson(buscarHistoricoRecente(limite));
+    }
+
     if (parametros.acao !== "buscarTfm") {
       return responderJson({ sucesso: false, erro: "Acao invalida." });
     }
@@ -267,6 +276,90 @@ function buscarDocumentoPorTfm(tfm) {
     sucesso: true,
     encontrado: false,
     tfm
+  };
+}
+
+function buscarResumoGeral() {
+  const aba = obterAbaPrincipal();
+  const dados = aba.getDataRange().getValues();
+  const cabecalhos = dados[0] || [];
+  const colunaTfm = obterIndiceCabecalho(cabecalhos, ["TFM", "Numero do TFM", "Número do TFM"]);
+  const colunaAtividade = obterIndiceCabecalho(cabecalhos, ["Atividade", "Atividade Realizada"]);
+  const colunaHoras = obterIndiceCabecalho(cabecalhos, ["Horas", "Horas Trabalhadas"]);
+
+  if (colunaTfm === -1 || colunaHoras === -1) {
+    throw new Error("Cabecalhos da planilha nao encontrados.");
+  }
+
+  const tfms = new Set();
+  let totalAtividades = 0;
+  let totalHoras = 0;
+
+  for (let indice = 1; indice < dados.length; indice += 1) {
+    const linha = dados[indice];
+    const tfm = String(linha[colunaTfm] || "").trim();
+    const atividade = colunaAtividade >= 0 ? String(linha[colunaAtividade] || "").trim() : "";
+    const horas = Number(String(linha[colunaHoras] || "0").replace(",", "."));
+
+    if (tfm) {
+      tfms.add(tfm);
+    }
+
+    if (atividade || horas > 0) {
+      totalAtividades += 1;
+    }
+
+    if (!Number.isNaN(horas)) {
+      totalHoras += horas;
+    }
+  }
+
+  return {
+    sucesso: true,
+    totalAtividades,
+    totalHoras,
+    totalTfms: tfms.size
+  };
+}
+
+function buscarHistoricoRecente(limite) {
+  const aba = obterAbaPrincipal();
+  const dados = aba.getDataRange().getValues();
+  const cabecalhos = dados[0] || [];
+  const colunaData = obterIndiceCabecalho(cabecalhos, ["Data"]);
+  const colunaNome = obterIndiceCabecalho(cabecalhos, ["Nome", "Nome do Colaborador", "Colaborador"]);
+  const colunaTfm = obterIndiceCabecalho(cabecalhos, ["TFM", "Numero do TFM", "Número do TFM"]);
+  const colunaAtividade = obterIndiceCabecalho(cabecalhos, ["Atividade", "Atividade Realizada"]);
+  const colunaHoras = obterIndiceCabecalho(cabecalhos, ["Horas", "Horas Trabalhadas"]);
+
+  if (colunaTfm === -1 || colunaAtividade === -1) {
+    throw new Error("Cabecalhos da planilha nao encontrados.");
+  }
+
+  const quantidade = Math.min(Math.max(Number(limite) || 5, 1), 10);
+  const historico = [];
+
+  for (let indice = dados.length - 1; indice >= 1 && historico.length < quantidade; indice -= 1) {
+    const linha = dados[indice];
+    const tfm = String(linha[colunaTfm] || "").trim();
+    const atividade = colunaAtividade >= 0 ? String(linha[colunaAtividade] || "").trim() : "";
+
+    if (!tfm && !atividade) {
+      continue;
+    }
+
+    historico.push({
+      data: colunaData >= 0 ? linha[colunaData] : "",
+      nome: colunaNome >= 0 ? linha[colunaNome] : "",
+      tfm,
+      atividade,
+      horas: colunaHoras >= 0 ? linha[colunaHoras] : ""
+    });
+  }
+
+  return {
+    sucesso: true,
+    historico
   };
 }
 
