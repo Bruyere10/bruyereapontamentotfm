@@ -381,7 +381,7 @@ function criarDetalhesItem(indice) {
                 <label for="horas-${indice}">Horas Trabalhadas</label>
                 <div class="input-icon">
                     <i class="bi bi-clock-history"></i>
-                    <input id="horas-${indice}" name="horas[]" type="number" class="horas-input" min="0.1" max="24" step="0.1" placeholder="Ex: 2.5" required>
+                    <input id="horas-${indice}" name="horas[]" type="number" class="horas-input" min="0.1" step="0.1" placeholder="Ex: 2.5" required>
                 </div>
             </div>
 
