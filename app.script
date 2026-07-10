@@ -25,6 +25,70 @@ const CABECALHOS_SUGESTOES = [
   "OBSERVAÇÃO ATIVIDADE"
 ];
 
+const ATIVIDADES_DISPONIVEIS = [
+  "Troca de motor N4/ N3 em veículo",
+  "Troca de motor Diesel 2.2 KP1",
+  "Troca de motor Diesel 2.2 Comander / Toro / RampageAC",
+  "Troca de motor T3 / T4",
+  "Revisão motor veículo",
+  "Pesagem de óleo quente",
+  "Check list veículo 0Km",
+  "Checklist veículo Usado",
+  "Check list Ducato e K0",
+  "Troca de componente do motor em veículo (Front Cover, corrente, VVT...)",
+  "Troca de catalisador em veículos aspirados",
+  "Troca de catalisador em veículos turbo Fiat",
+  "Troca de catalisador em veículo Peugeot e 281",
+  "Instrumentação de catalisador veículo",
+  "Troca de catalisador Diesel veículo",
+  "Troca de turbina Diesel veículo",
+  "Troca de turbina T3 e T4 veículo",
+  "Troca de turbina GME veículo",
+  "Revisão de motor em cela",
+  "Troca de velas em veículo",
+  "Troca de motor em carrinho preparado aspirado e turbo",
+  "Preparação de carrinho para rodagem em cela.(Novo)",
+  "Troca de motor GME veículo",
+  "Motor controle total",
+  "Motor controle parcial",
+  "Atualização de componentes",
+  "Desmontagem fim de prova aspirado e turbo",
+  "Desmontagem fim de prova turbo GME, diesel e EC5",
+  "Instrumentação de cabeçote (Incoder)",
+  "Instrumentação de turbina",
+  "Troca de cabeçote",
+  "Troca de frontcover",
+  "Troca de motor Start Cart",
+  "Troca de sensores indicom na cela turbo",
+  "Troca de sensores indicom aspirado",
+  "Troca de bicos e bomba em veículo",
+  "Benchmarking Escaneamento 3D",
+  "PowerBook Motor Benchmarking",
+  "PowerBook Transmissão Benchmarking",
+  "PowerBook Eletrificados H.V Benchmarking",
+  "PowerBook Sistemas Benchmarking",
+  "Preparação Workshop Motores/Transmissão/Eletrificação/Sistemas Benchmarking",
+  "Montagem Workshop Motores/Transmissão/Eletrificação/Sistemas Benchmarking",
+  "Suporte técnico Workshop Motores/Transmissão/Eletrificação/Sistemas Benchmarking",
+  "Desmontagem Workshop Motores/Transmissão/Eletrificação/Sistemas Benchmarking",
+  "Suporte técnico em apresentações Workshop Welcome Benchmarking",
+  "Checklist veículo Benchmarking",
+  "Levar e Buscar carro Benchmarking locadora/concessionária",
+  "Movimentar veículos Benchmarking Oficina/Benchmarking veículos/Pátio",
+  "Diagnose em veículos Benchmarking",
+  "Retirada de bateria H.V veículos Benchmarking",
+  "Desenergização veículos híbridos",
+  "Outros - Atividade rápida",
+  "Outros - Atividade curta",
+  "Outros - Atividade média",
+  "Outros - Atividade longa",
+  "Alinhamento de motor em cela",
+  "TFM Cancelada",
+  "Troca de motor Diesel em Cela",
+  "Preparação e Alinhamento de Motor Diesel 2.2 em Cela",
+  "Troca de componentes no veiculo"
+];
+
 const COLUNA_INICIAL_SUGESTOES = 5;
 
 function doPost(evento) {
@@ -35,13 +99,14 @@ function doPost(evento) {
       return salvarSugestaoAtividade(dados);
     }
 
-    const planilha = obterAbaPrincipal();
-    const documento = salvarDocumentoNoDrive(dados);
     const atividades = Array.isArray(dados.atividades) && dados.atividades.length > 0
       ? dados.atividades
-      : [{ atividade: "", horas: "", observacao: "" }];
+      : [];
+    const atividadesValidadas = validarAtividades(atividades);
+    const planilha = obterAbaPrincipal();
+    const documento = salvarDocumentoNoDrive(dados);
 
-    const linhas = atividades.map((atividade) => [
+    const linhas = atividadesValidadas.map((atividade) => [
       dados.data || "",
       dados.nome || "",
       dados.matricula || "",
@@ -73,6 +138,43 @@ function doPost(evento) {
       erro: erro.message || "Erro ao salvar apontamento."
     });
   }
+}
+
+function normalizarTexto(texto) {
+  return String(texto || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function buscarAtividadeDisponivel(valor) {
+  const valorNormalizado = normalizarTexto(String(valor || "").trim());
+  return ATIVIDADES_DISPONIVEIS.find((atividade) => normalizarTexto(atividade) === valorNormalizado) || "";
+}
+
+function validarAtividades(atividades) {
+  if (!Array.isArray(atividades) || atividades.length === 0) {
+    throw new Error("Informe ao menos uma atividade da lista.");
+  }
+
+  return atividades.map((atividade) => {
+    const atividadeValida = buscarAtividadeDisponivel(atividade.atividade);
+    const horas = Number(atividade.horas || 0);
+
+    if (!atividadeValida) {
+      throw new Error("Selecione somente atividades que aparecem na lista.");
+    }
+
+    if (!atividade.horas || horas <= 0) {
+      throw new Error("Informe as horas trabalhadas da atividade.");
+    }
+
+    return {
+      atividade: atividadeValida,
+      horas: atividade.horas,
+      observacao: atividade.observacao || ""
+    };
+  });
 }
 
 function salvarSugestaoAtividade(dados) {

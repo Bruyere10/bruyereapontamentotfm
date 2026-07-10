@@ -56,7 +56,10 @@ const atividadesDisponiveis = [
     "Outros - Atividade média",
     "Outros - Atividade longa",
     "Alinhamento de motor em cela",
-    "TFM Cancelada"
+    "TFM Cancelada",
+    "Troca de motor Diesel em Cela",
+    "Preparação e Alinhamento de Motor Diesel 2.2 em Cela",
+    "Troca de componentes no veiculo"
 ];
 
 const btnAdd = document.querySelector(".btn-add");
@@ -131,6 +134,11 @@ function normalizarTexto(texto) {
         .toLowerCase();
 }
 
+function buscarAtividadeDisponivel(valor) {
+    const valorNormalizado = normalizarTexto(valor.trim());
+    return atividadesDisponiveis.find((atividade) => normalizarTexto(atividade) === valorNormalizado) || "";
+}
+
 function fecharSugestoes() {
     document.querySelectorAll(".atividade-sugestoes").forEach((lista) => {
         lista.hidden = true;
@@ -142,6 +150,30 @@ function mostrarFeedback(mensagem, tipo = "sucesso") {
     feedbackGlobal.hidden = false;
     feedbackGlobal.className = `feedback-global ${tipo}`;
     feedbackGlobal.textContent = mensagem;
+    feedbackGlobal.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function mostrarFeedbackAtividadeInvalida(input) {
+    const atividadeDigitada = input.value.trim();
+    const mensagem = document.createElement("span");
+    const botaoSugerir = document.createElement("button");
+
+    feedbackGlobal.hidden = false;
+    feedbackGlobal.className = "feedback-global erro feedback-com-acao";
+    feedbackGlobal.innerHTML = "";
+
+    mensagem.textContent = "Selecione somente atividades que aparecem na lista.";
+    botaoSugerir.type = "button";
+    botaoSugerir.className = "feedback-acao";
+    botaoSugerir.textContent = "Sugerir atividade";
+
+    botaoSugerir.addEventListener("click", () => {
+        sugestaoAtividadeInput.value = atividadeDigitada;
+        abrirModalSugestao();
+    });
+
+    feedbackGlobal.appendChild(mensagem);
+    feedbackGlobal.appendChild(botaoSugerir);
     feedbackGlobal.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
@@ -371,7 +403,7 @@ function criarDetalhesItem(indice) {
                 <div class="autocomplete-wrapper">
                     <div class="input-icon">
                         <i class="bi bi-list-ul"></i>
-                        <input id="atividade-${indice}" name="atividade[]" type="text" class="atividade-input" placeholder="Digite ou selecione a atividade" autocomplete="off" required>
+                        <input id="atividade-${indice}" name="atividade[]" type="text" class="atividade-input" placeholder="Selecione uma atividade da lista" autocomplete="off" required>
                     </div>
                     <div class="atividade-sugestoes" hidden></div>
                 </div>
@@ -546,14 +578,14 @@ function fecharModalAtividade() {
 }
 
 function adicionarAtividadeDoModal() {
-    const atividade = modalAtividadeInput.value.trim();
+    const atividade = buscarAtividadeDisponivel(modalAtividadeInput.value);
     const horas = Number(modalHorasInput.value);
 
     marcarCampo(modalAtividadeInput, !atividade);
     marcarCampo(modalHorasInput, !modalHorasInput.value || horas <= 0);
 
     if (!atividade || !modalHorasInput.value || horas <= 0) {
-        mostrarFeedback("Informe a atividade e as horas antes de adicionar.", "erro");
+        mostrarFeedback("Selecione uma atividade da lista e informe as horas antes de adicionar.", "erro");
         return;
     }
 
@@ -760,9 +792,21 @@ async function enviarSugestaoAtividade() {
 function validarFormulario() {
     const tfmInput = document.getElementById("tfm");
     const horasInputs = Array.from(document.querySelectorAll(".horas-input"));
+    const atividadeInputs = Array.from(document.querySelectorAll(".atividade-input"));
     let valido = form.checkValidity();
 
     marcarCampo(tfmInput, !/^[0-9]{6}$/.test(tfmInput.value.trim()));
+
+    atividadeInputs.forEach((input) => {
+        const atividade = buscarAtividadeDisponivel(input.value);
+        const invalido = !atividade;
+        marcarCampo(input, invalido);
+        if (invalido) {
+            valido = false;
+        } else {
+            input.value = atividade;
+        }
+    });
 
     horasInputs.forEach((input) => {
         const horas = Number(input.value);
@@ -777,6 +821,14 @@ function validarFormulario() {
         valido = false;
         mostrarFeedback("Informe um número de TFM com exatamente 6 números.", "erro");
         tfmInput.focus();
+        return false;
+    }
+
+    const atividadeInvalida = atividadeInputs.find((input) => !buscarAtividadeDisponivel(input.value));
+
+    if (atividadeInvalida) {
+        mostrarFeedbackAtividadeInvalida(atividadeInvalida);
+        atividadeInvalida.focus();
         return false;
     }
 
@@ -862,7 +914,7 @@ document.querySelectorAll("[data-fechar-atividade]").forEach((elemento) => {
 btnHelp.addEventListener("click", abrirModalHelp);
 
 document.addEventListener("input", (event) => {
-    if (event.target.matches(".horas-input, #tfm")) {
+    if (event.target.matches(".horas-input, #tfm, .atividade-input, .atividade-input-modal")) {
         marcarCampo(event.target, false);
         atualizarResumo();
     }

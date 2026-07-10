@@ -172,6 +172,33 @@ body.modal-aberto{
     color:#7f1d1d;
 }
 
+.feedback-com-acao{
+    align-items:center;
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    justify-content:space-between;
+}
+
+.feedback-acao{
+    background:#7f1d1d;
+    border:0;
+    border-radius:10px;
+    color:white;
+    cursor:pointer;
+    font-size:13px;
+    font-weight:bold;
+    padding:8px 12px;
+    transition:0.25s;
+}
+
+.feedback-acao:hover,
+.feedback-acao:focus{
+    background:#991b1b;
+    outline:none;
+    transform:translateY(-1px);
+}
+
 .feedback-global.aviso{
     background:#fff7ed;
     border:1px solid #fdba74;
