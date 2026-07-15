@@ -1,7 +1,7 @@
 const CONFIG = {
   planilhaId: "1B_ER15kHjnoiRcVNeVL6UVsbD-6tttgiKr4Ph22SHeo",
   nomeAba: "Página1",
-  nomeAbaSugestoes: "Códigos",
+  nomeAbaDadosComplementares: "Dados Complementares",
   pastaDriveId: "1Qq8X2VhghaBkM712AqX-yPoKmD_TUn0L",
   permitirAcessoPorLink: true
 };
@@ -16,80 +16,18 @@ const CABECALHOS = [
   "ATIVIDADE",
   "HORAS",
   "OBSERVAÇÃO",
+  "COLABORADORES ADICIONAIS",
+  "HORAS COLABORADORES",
   "NOME DO PDF",
   "LINK DO PDF"
 ];
 
-const CABECALHOS_SUGESTOES = [
+const CABECALHOS_DADOS_COMPLEMENTARES = [
   "SUGESTÃO DE ATIVIDADE",
-  "OBSERVAÇÃO ATIVIDADE"
+  "OBSERVAÇÃO ATIVIDADE",
+  "CADASTRO NOME",
+  "CADASTRO MATRÍCULA"
 ];
-
-const ATIVIDADES_DISPONIVEIS = [
-  "Troca de motor N4/ N3 em veículo",
-  "Troca de motor Diesel 2.2 KP1",
-  "Troca de motor Diesel 2.2 Comander / Toro / RampageAC",
-  "Troca de motor T3 / T4",
-  "Revisão motor veículo",
-  "Pesagem de óleo quente",
-  "Check list veículo 0Km",
-  "Checklist veículo Usado",
-  "Check list Ducato e K0",
-  "Troca de componente do motor em veículo (Front Cover, corrente, VVT...)",
-  "Troca de catalisador em veículos aspirados",
-  "Troca de catalisador em veículos turbo Fiat",
-  "Troca de catalisador em veículo Peugeot e 281",
-  "Instrumentação de catalisador veículo",
-  "Troca de catalisador Diesel veículo",
-  "Troca de turbina Diesel veículo",
-  "Troca de turbina T3 e T4 veículo",
-  "Troca de turbina GME veículo",
-  "Revisão de motor em cela",
-  "Troca de velas em veículo",
-  "Troca de motor em carrinho preparado aspirado e turbo",
-  "Preparação de carrinho para rodagem em cela.(Novo)",
-  "Troca de motor GME veículo",
-  "Motor controle total",
-  "Motor controle parcial",
-  "Atualização de componentes",
-  "Desmontagem fim de prova aspirado e turbo",
-  "Desmontagem fim de prova turbo GME, diesel e EC5",
-  "Instrumentação de cabeçote (Incoder)",
-  "Instrumentação de turbina",
-  "Troca de cabeçote",
-  "Troca de frontcover",
-  "Troca de motor Start Cart",
-  "Troca de sensores indicom na cela turbo",
-  "Troca de sensores indicom aspirado",
-  "Troca de bicos e bomba em veículo",
-  "Benchmarking Escaneamento 3D",
-  "PowerBook Motor Benchmarking",
-  "PowerBook Transmissão Benchmarking",
-  "PowerBook Eletrificados H.V Benchmarking",
-  "PowerBook Sistemas Benchmarking",
-  "Preparação Workshop Motores/Transmissão/Eletrificação/Sistemas Benchmarking",
-  "Montagem Workshop Motores/Transmissão/Eletrificação/Sistemas Benchmarking",
-  "Suporte técnico Workshop Motores/Transmissão/Eletrificação/Sistemas Benchmarking",
-  "Desmontagem Workshop Motores/Transmissão/Eletrificação/Sistemas Benchmarking",
-  "Suporte técnico em apresentações Workshop Welcome Benchmarking",
-  "Checklist veículo Benchmarking",
-  "Levar e Buscar carro Benchmarking locadora/concessionária",
-  "Movimentar veículos Benchmarking Oficina/Benchmarking veículos/Pátio",
-  "Diagnose em veículos Benchmarking",
-  "Retirada de bateria H.V veículos Benchmarking",
-  "Desenergização veículos híbridos",
-  "Outros - Atividade rápida",
-  "Outros - Atividade curta",
-  "Outros - Atividade média",
-  "Outros - Atividade longa",
-  "Alinhamento de motor em cela",
-  "TFM Cancelada",
-  "Troca de motor Diesel em Cela",
-  "Preparação e Alinhamento de Motor Diesel 2.2 em Cela",
-  "Troca de componentes no veiculo"
-];
-
-const COLUNA_INICIAL_SUGESTOES = 5;
 
 function doPost(evento) {
   try {
@@ -99,38 +37,61 @@ function doPost(evento) {
       return salvarSugestaoAtividade(dados);
     }
 
-    const atividades = Array.isArray(dados.atividades) && dados.atividades.length > 0
-      ? dados.atividades
-      : [];
-    const atividadesValidadas = validarAtividades(atividades);
+    if (dados.acao === "registrarCadastroPendente") {
+      return salvarCadastroPendente(dados);
+    }
+
     const planilha = obterAbaPrincipal();
-    const documento = salvarDocumentoNoDrive(dados);
+    const documentos = salvarDocumentosNoDrive(dados);
+    const nomesDocumentos = documentos.map((documento) => documento.nome).join(" | ");
+    const linksDocumentos = documentos.map((documento) => documento.url).join(" | ");
+    const atividades = Array.isArray(dados.distribuicaoDiaria) && dados.distribuicaoDiaria.length > 0
+      ? dados.distribuicaoDiaria
+      : Array.isArray(dados.atividades) && dados.atividades.length > 0
+        ? dados.atividades
+        : [{ atividade: "", horas: "", observacao: "" }];
+    const colaboradoresAdicionais = normalizarColaboradoresAdicionais(dados.colaboradoresAdicionais);
+    const colaboradoresApontamento = [
+      {
+        nome: dados.nome || "",
+        matricula: dados.matricula || "",
+        horas: ""
+      },
+      ...colaboradoresAdicionais
+    ];
+    const cabecalhosPlanilha = planilha.getRange(1, 1, 1, planilha.getLastColumn()).getValues()[0];
 
-    const linhas = atividadesValidadas.map((atividade) => [
-      dados.data || "",
-      dados.nome || "",
-      dados.matricula || "",
-      dados.turno || "",
-      dados.tfm || "",
-      dados.projeto || "",
-      atividade.atividade || "",
-      atividade.horas || "",
-      atividade.observacao || "",
-      documento.nome || "",
-      documento.url || ""
-    ]);
+    const linhas = atividades.flatMap((atividade) => (
+      colaboradoresApontamento.map((colaborador) => criarLinhaApontamento(cabecalhosPlanilha, {
+        data: atividade.data || dados.data || "",
+        nome: colaborador.nome || "",
+        matricula: colaborador.matricula || "",
+        turno: dados.turno || "",
+        tfm: dados.tfm || "",
+        projeto: dados.projeto || "",
+        atividade: atividade.atividade || "",
+        horas: colaborador.horas || atividade.horas || "",
+        observacao: atividade.observacao || "",
+        colaboradoresAdicionais: "",
+        horasColaboradores: "",
+        nomesDocumentos,
+        linksDocumentos
+      }))
+    ));
 
-    planilha.getRange(planilha.getLastRow() + 1, 1, linhas.length, CABECALHOS.length).setValues(linhas);
+    planilha.getRange(planilha.getLastRow() + 1, 1, linhas.length, cabecalhosPlanilha.length).setValues(linhas);
+
+    if (dados.cadastroPendente) {
+      salvarCadastroPendente(dados);
+    }
 
     return responderJson({
       sucesso: true,
-      documento: documento.url
-        ? {
-            nome: documento.nome,
-            url: documento.url,
-            id: documento.id
-          }
-        : null
+      documentos: documentos.map((documento) => ({
+        nome: documento.nome,
+        url: documento.url,
+        id: documento.id
+      }))
     });
   } catch (erro) {
     return responderJson({
@@ -140,50 +101,15 @@ function doPost(evento) {
   }
 }
 
-function normalizarTexto(texto) {
-  return String(texto || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
-
-function buscarAtividadeDisponivel(valor) {
-  const valorNormalizado = normalizarTexto(String(valor || "").trim());
-  return ATIVIDADES_DISPONIVEIS.find((atividade) => normalizarTexto(atividade) === valorNormalizado) || "";
-}
-
-function validarAtividades(atividades) {
-  if (!Array.isArray(atividades) || atividades.length === 0) {
-    throw new Error("Informe ao menos uma atividade da lista.");
-  }
-
-  return atividades.map((atividade) => {
-    const atividadeValida = buscarAtividadeDisponivel(atividade.atividade);
-    const horas = Number(atividade.horas || 0);
-
-    if (!atividadeValida) {
-      throw new Error("Selecione somente atividades que aparecem na lista.");
-    }
-
-    if (!atividade.horas || horas <= 0) {
-      throw new Error("Informe as horas trabalhadas da atividade.");
-    }
-
-    return {
-      atividade: atividadeValida,
-      horas: atividade.horas,
-      observacao: atividade.observacao || ""
-    };
-  });
-}
-
 function salvarSugestaoAtividade(dados) {
   try {
-    const aba = obterAbaSugestoes();
+    const aba = obterAbaDadosComplementares();
 
-    aba.getRange(aba.getLastRow() + 1, COLUNA_INICIAL_SUGESTOES, 1, CABECALHOS_SUGESTOES.length).setValues([[
+    aba.getRange(aba.getLastRow() + 1, 1, 1, CABECALHOS_DADOS_COMPLEMENTARES.length).setValues([[
       dados.atividade || "",
-      dados.observacao || ""
+      dados.observacao || "",
+      "",
+      ""
     ]]);
 
     return responderJson({
@@ -195,6 +121,62 @@ function salvarSugestaoAtividade(dados) {
       erro: erro.message || "Erro ao salvar sugestao de atividade."
     });
   }
+}
+
+function salvarCadastroPendente(dados) {
+  try {
+    const aba = obterAbaDadosComplementares();
+    const nome = String(dados.nome || "").trim();
+    const matricula = String(dados.matricula || "").trim();
+
+    if (!nome || !matricula) {
+      return responderJson({
+        sucesso: false,
+        erro: "Nome e matricula sao obrigatorios para registrar cadastro pendente."
+      });
+    }
+
+    if (cadastroPendenteJaRegistrado(aba, nome, matricula)) {
+      return responderJson({
+        sucesso: true,
+        duplicado: true
+      });
+    }
+
+    aba.getRange(aba.getLastRow() + 1, 1, 1, CABECALHOS_DADOS_COMPLEMENTARES.length).setValues([[
+      "",
+      "",
+      nome,
+      matricula
+    ]]);
+
+    return responderJson({
+      sucesso: true
+    });
+  } catch (erro) {
+    return responderJson({
+      sucesso: false,
+      erro: erro.message || "Erro ao salvar cadastro pendente."
+    });
+  }
+}
+
+function cadastroPendenteJaRegistrado(aba, nome, matricula) {
+  const ultimaLinha = aba.getLastRow();
+
+  if (ultimaLinha < 2) {
+    return false;
+  }
+
+  const registros = aba.getRange(2, 3, ultimaLinha - 1, 2).getValues();
+  const nomeNormalizado = nome.toLowerCase();
+
+  return registros.some((registro) => {
+    const nomeRegistrado = String(registro[0] || "").trim().toLowerCase();
+    const matriculaRegistrada = String(registro[1] || "").trim();
+
+    return matriculaRegistrada === matricula || nomeRegistrado === nomeNormalizado;
+  });
 }
 
 function doGet(evento) {
@@ -247,57 +229,127 @@ function obterAbaPrincipal() {
 
   if (aba.getLastRow() === 0) {
     aba.appendRow(CABECALHOS);
+  } else {
+    garantirCabecalhos(aba, CABECALHOS);
   }
 
   return aba;
 }
 
-function obterAbaSugestoes() {
+function garantirCabecalhos(aba, cabecalhosEsperados) {
+  const ultimaColuna = Math.max(aba.getLastColumn(), 1);
+  const cabecalhosAtuais = aba.getRange(1, 1, 1, ultimaColuna).getValues()[0];
+  const novosCabecalhos = cabecalhosEsperados.filter((cabecalho) => (
+    obterIndiceCabecalho(cabecalhosAtuais, [cabecalho]) === -1
+  ));
+
+  if (novosCabecalhos.length === 0) {
+    return;
+  }
+
+  aba.getRange(1, ultimaColuna + 1, 1, novosCabecalhos.length).setValues([novosCabecalhos]);
+}
+
+function normalizarColaboradoresAdicionais(colaboradores) {
+  if (!Array.isArray(colaboradores)) {
+    return [];
+  }
+
+  return colaboradores.map((colaborador) => ({
+    nome: String(colaborador.nome || "").trim(),
+    matricula: String(colaborador.matricula || "").trim(),
+    horas: String(colaborador.horas || "").trim().replace(",", ".")
+  })).filter((colaborador) => colaborador.nome && colaborador.horas);
+}
+
+function separarColaboradoresAdicionais(nomes, horas) {
+  const listaNomes = String(nomes || "").split(" | ").map((item) => item.trim()).filter(Boolean);
+  const listaHoras = String(horas || "").split(" | ").map((item) => item.trim()).filter(Boolean);
+
+  return listaNomes.map((item, indice) => {
+    const matriculaEncontrada = item.match(/\(([^)]+)\)$/);
+    const nome = item.replace(/\s*\([^)]+\)$/, "").trim();
+    const horasTexto = listaHoras[indice] || "";
+
+    return {
+      nome,
+      matricula: matriculaEncontrada ? matriculaEncontrada[1] : "",
+      horas: horasTexto.includes(":") ? horasTexto.split(":").slice(1).join(":").trim() : horasTexto
+    };
+  }).filter((colaborador) => colaborador.nome || colaborador.horas);
+}
+
+function criarLinhaApontamento(cabecalhos, valores) {
+  return cabecalhos.map((cabecalho) => {
+    const normalizado = normalizarCabecalho(cabecalho);
+
+    if (normalizado === "data") return valores.data;
+    if (["nome", "nome do colaborador", "colaborador"].includes(normalizado)) return valores.nome;
+    if (["matricula", "matrícula"].includes(normalizado)) return valores.matricula;
+    if (normalizado === "turno") return valores.turno;
+    if (["tfm", "numero do tfm", "número do tfm"].includes(normalizado)) return valores.tfm;
+    if (["projeto", "codigo do projeto", "código do projeto"].includes(normalizado)) return valores.projeto;
+    if (["atividade", "atividade realizada"].includes(normalizado)) return valores.atividade;
+    if (["horas", "horas trabalhadas"].includes(normalizado)) return valores.horas;
+    if (["observacao", "observação", "observacao da atividade", "observação da atividade"].includes(normalizado)) return valores.observacao;
+    if (["colaboradores adicionais", "colaborador adicional"].includes(normalizado)) return valores.colaboradoresAdicionais;
+    if (["horas colaboradores", "horas dos colaboradores"].includes(normalizado)) return valores.horasColaboradores;
+    if (["nome do pdf", "pdf", "nome documento", "nome do documento"].includes(normalizado)) return valores.nomesDocumentos;
+    if (["link do pdf", "link pdf", "url do pdf", "documento", "link do documento"].includes(normalizado)) return valores.linksDocumentos;
+
+    return "";
+  });
+}
+
+function obterAbaDadosComplementares() {
   const arquivo = obterArquivoPlanilha();
-  const aba = arquivo.getSheetByName(CONFIG.nomeAbaSugestoes) || arquivo.insertSheet(CONFIG.nomeAbaSugestoes);
+  const aba = arquivo.getSheetByName(CONFIG.nomeAbaDadosComplementares) || arquivo.insertSheet(CONFIG.nomeAbaDadosComplementares);
 
   if (aba.getLastRow() === 0) {
-    aba.getRange(1, COLUNA_INICIAL_SUGESTOES, 1, CABECALHOS_SUGESTOES.length).setValues([CABECALHOS_SUGESTOES]);
+    aba.getRange(1, 1, 1, CABECALHOS_DADOS_COMPLEMENTARES.length).setValues([CABECALHOS_DADOS_COMPLEMENTARES]);
   }
 
   return aba;
 }
 
-function salvarDocumentoNoDrive(dados) {
-  const documento = dados.documento;
+function salvarDocumentosNoDrive(dados) {
+  const documentos = Array.isArray(dados.documentos)
+    ? dados.documentos
+    : (dados.documento ? [dados.documento] : []);
+  const tiposPermitidos = ["application/pdf", "image/png", "image/jpeg"];
 
-  if (!documento || !documento.conteudoBase64) {
-    return {};
-  }
+  return documentos
+    .filter((documento) => documento && documento.conteudoBase64)
+    .map((documento) => {
+      if (!tiposPermitidos.includes(documento.tipo)) {
+        throw new Error("Anexe apenas arquivos PDF, PNG, JPG ou JPEG.");
+      }
 
-  if (documento.tipo !== "application/pdf") {
-    throw new Error("Anexe apenas arquivos PDF.");
-  }
+      if (Number(documento.tamanho) > 5 * 1024 * 1024) {
+        throw new Error("Cada arquivo deve ter no maximo 5 MB.");
+      }
 
-  if (Number(documento.tamanho) > 5 * 1024 * 1024) {
-    throw new Error("O PDF deve ter no maximo 5 MB.");
-  }
+      const bytes = Utilities.base64Decode(documento.conteudoBase64);
+      const nomeArquivo = criarNomeArquivoDocumento(dados.tfm, documento.nome);
+      const blob = Utilities.newBlob(bytes, documento.tipo, nomeArquivo);
+      const pasta = obterPastaDestino();
+      const arquivo = pasta.createFile(blob);
 
-  const bytes = Utilities.base64Decode(documento.conteudoBase64);
-  const nomeArquivo = criarNomeArquivoPdf(dados.tfm, documento.nome);
-  const blob = Utilities.newBlob(bytes, documento.tipo, nomeArquivo);
-  const pasta = obterPastaDestino();
-  const arquivo = pasta.createFile(blob);
+      if (CONFIG.permitirAcessoPorLink) {
+        try {
+          arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        } catch (erro) {
+          console.warn(`Nao foi possivel liberar o documento por link: ${erro.message}`);
+        }
+      }
 
-  if (CONFIG.permitirAcessoPorLink) {
-    try {
-      arquivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    } catch (erro) {
-      console.warn(`Nao foi possivel liberar o PDF por link: ${erro.message}`);
-    }
-  }
-
-  return {
-    nome: arquivo.getName(),
-    url: arquivo.getUrl(),
-    id: arquivo.getId(),
-    tamanho: documento.tamanho
-  };
+      return {
+        nome: arquivo.getName(),
+        url: arquivo.getUrl(),
+        id: arquivo.getId(),
+        tamanho: documento.tamanho
+      };
+    });
 }
 
 function obterPastaDestino() {
@@ -308,8 +360,8 @@ function obterPastaDestino() {
   return DriveApp.getRootFolder();
 }
 
-function criarNomeArquivoPdf(tfm, nomeOriginal) {
-  const nomeSeguro = String(nomeOriginal || "documento.pdf").replace(/[\\/:*?"<>|]/g, "-");
+function criarNomeArquivoDocumento(tfm, nomeOriginal) {
+  const nomeSeguro = String(nomeOriginal || "documento").replace(/[\\/:*?"<>|]/g, "-");
   const prefixo = /^\d{6}$/.test(String(tfm || "")) ? `${tfm} - ` : "";
 
   return `${prefixo}${nomeSeguro}`;
@@ -328,6 +380,8 @@ function buscarDocumentoPorTfm(tfm) {
   const colunaAtividade = obterIndiceCabecalho(cabecalhos, ["Atividade", "Atividade Realizada"]);
   const colunaHoras = obterIndiceCabecalho(cabecalhos, ["Horas", "Horas Trabalhadas"]);
   const colunaObservacao = obterIndiceCabecalho(cabecalhos, ["Observacao", "Observação", "Observacao da atividade", "Observação da atividade"]);
+  const colunaColaboradoresAdicionais = obterIndiceCabecalho(cabecalhos, ["Colaboradores adicionais", "Colaborador adicional"]);
+  const colunaHorasColaboradores = obterIndiceCabecalho(cabecalhos, ["Horas colaboradores", "Horas dos colaboradores"]);
   const colunaNomePdf = obterIndiceCabecalho(cabecalhos, ["Nome do PDF", "PDF", "Nome Documento", "Nome do Documento"]);
   const colunaLinkPdf = obterIndiceCabecalho(cabecalhos, ["Link do PDF", "Link PDF", "URL do PDF", "Documento", "Link do Documento"]);
 
@@ -353,6 +407,10 @@ function buscarDocumentoPorTfm(tfm) {
         nome: colunaNome >= 0 ? linha[colunaNome] : "",
         matricula: colunaMatricula >= 0 ? linha[colunaMatricula] : "",
         projeto: colunaProjeto >= 0 ? linha[colunaProjeto] : "",
+        colaboradoresAdicionais: separarColaboradoresAdicionais(
+          colunaColaboradoresAdicionais >= 0 ? linha[colunaColaboradoresAdicionais] : "",
+          colunaHorasColaboradores >= 0 ? linha[colunaHorasColaboradores] : ""
+        ),
         nomeDocumento: colunaNomePdf >= 0 ? linha[colunaNomePdf] : "",
         urlDocumento: colunaLinkPdf >= 0 ? linha[colunaLinkPdf] : ""
       };

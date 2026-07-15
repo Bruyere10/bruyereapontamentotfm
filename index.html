@@ -13,17 +13,106 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
 
-<body>
+<body class="login-bloqueado">
     <header class="header">
         <div class="header-inner">
             <img src="logo.png" class="logo" alt="Stellantis">
 
-            <button type="button" class="btn-abrir-sugestao">
-                <i class="bi bi-lightbulb"></i>
-                <span>Sugerir atividade</span>
-            </button>
+            <div class="header-acoes">
+                <div id="usuario-logado" class="usuario-logado" hidden>
+                    <i class="bi bi-person-check"></i>
+                    <span id="usuario-logado-nome">-</span>
+                    <button type="button" class="btn-sair-login" aria-label="Sair do sistema">
+                        <i class="bi bi-box-arrow-right"></i>
+                    </button>
+                </div>
+
+                <button type="button" class="btn-abrir-sugestao">
+                    <i class="bi bi-lightbulb"></i>
+                    <span>Sugerir atividade</span>
+                </button>
+            </div>
         </div>
     </header>
+
+    <section id="tela-login" class="tela-login" aria-labelledby="login-titulo">
+        <div class="login-card">
+            <div class="login-marca">
+                <img src="logo.png" alt="Stellantis">
+            </div>
+
+            <div class="login-topo">
+                <span>Acesso ao apontamento</span>
+                <h1 id="login-titulo">Entre no Registro de TFM</h1>
+                <p>Informe seu nome e matrícula para acessar o apontamento.</p>
+            </div>
+
+            <div id="login-feedback" class="login-feedback" role="status" aria-live="polite" hidden></div>
+
+            <div class="login-form">
+                <div class="campo">
+                    <label for="login-nome">Nome do Colaborador</label>
+                    <div class="autocomplete-wrapper">
+                        <div class="input-icon">
+                            <i class="bi bi-person"></i>
+                            <input id="login-nome" type="text" class="login-colaborador-input" placeholder="Digite seu nome" autocomplete="off">
+                        </div>
+                        <div class="atividade-sugestoes" hidden></div>
+                    </div>
+                </div>
+
+                <div class="campo">
+                    <label for="login-matricula">Matrícula</label>
+                    <div class="input-icon">
+                        <i class="bi bi-hash"></i>
+                        <input id="login-matricula" type="text" placeholder="Digite sua matrícula" inputmode="numeric" autocomplete="off">
+                    </div>
+                </div>
+
+                <button type="button" class="btn-entrar-login">
+                    <i class="bi bi-box-arrow-in-right"></i>
+                    <span>Entrar</span>
+                </button>
+
+                <button type="button" class="btn-login-alternativo">
+                    <i class="bi bi-person-plus"></i>
+                    <span>Não encontrei meu nome</span>
+                </button>
+
+                <div id="login-alternativo" class="login-alternativo" hidden>
+                    <div class="login-alternativo-topo">
+                        <strong>Entrar com cadastro pendente</strong>
+                        <p>Use esta opção se seu nome ainda não aparece na lista. Depois peça para a liderança incluir seu cadastro oficial.</p>
+                    </div>
+
+                    <div class="campo">
+                        <label for="novo-login-nome">Nome completo</label>
+                        <div class="input-icon">
+                            <i class="bi bi-person-badge"></i>
+                            <input id="novo-login-nome" type="text" placeholder="Digite seu nome completo" autocomplete="off">
+                        </div>
+                    </div>
+
+                    <div class="campo">
+                        <label for="novo-login-matricula">Matrícula</label>
+                        <div class="input-icon">
+                            <i class="bi bi-hash"></i>
+                            <input id="novo-login-matricula" type="text" placeholder="Digite sua matrícula" inputmode="numeric" autocomplete="off">
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn-entrar-pendente">
+                        <i class="bi bi-person-check"></i>
+                        <span>Entrar e solicitar inclusão</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <button type="button" class="btn-help btn-help-login" aria-label="Abrir ajuda">
+            <i class="bi bi-question-lg"></i>
+        </button>
+    </section>
 
     <div id="modal-sugestao" class="modal-tfm" hidden>
         <div class="modal-tfm-backdrop" data-fechar-sugestao></div>
@@ -87,25 +176,25 @@
                         <div class="autocomplete-wrapper">
                             <div class="input-icon">
                                 <i class="bi bi-list-ul"></i>
-                                <input id="modal-atividade-input" type="text" class="atividade-input-modal" placeholder="Selecione uma atividade da lista" autocomplete="off">
+                                <input id="modal-atividade-input" type="text" class="atividade-input-modal" placeholder="Digite ou selecione a atividade" autocomplete="off">
                             </div>
                             <div class="atividade-sugestoes" hidden></div>
                         </div>
                     </div>
 
                     <div class="campo campo-inteiro">
-                        <label for="modal-horas-input">Horas Trabalhadas</label>
+                        <label for="modal-horas-input">Horas</label>
                         <div class="input-icon">
                             <i class="bi bi-clock-history"></i>
-                            <input id="modal-horas-input" type="number" min="0.1" step="0.1" placeholder="Ex: 2.5">
+                            <input id="modal-horas-input" type="text" placeholder="Ex: 1.5" inputmode="decimal" pattern="[0-9]+(\.[0-9]+)?">
                         </div>
                     </div>
 
                     <div class="campo campo-inteiro">
                         <label for="modal-observacao-input">Observação</label>
-                        <div class="input-icon">
+                        <div class="input-icon input-textarea">
                             <i class="bi bi-chat-left-text"></i>
-                            <input id="modal-observacao-input" type="text" placeholder="Digite alguma observação sobre a atividade">
+                            <textarea id="modal-observacao-input" rows="3" placeholder="Digite alguma observação sobre a atividade"></textarea>
                         </div>
                     </div>
 
@@ -113,6 +202,182 @@
                         <i class="bi bi-plus-lg"></i>
                         <span>Adicionar atividade</span>
                     </button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div id="modal-colaborador" class="modal-tfm" hidden>
+        <div class="modal-tfm-backdrop" data-fechar-colaborador></div>
+        <section class="modal-tfm-painel modal-colaborador-painel" role="dialog" aria-modal="true" aria-labelledby="modal-colaborador-titulo">
+            <div class="modal-tfm-topo">
+                <div>
+                    <span>Colaborador adicional</span>
+                    <h2 id="modal-colaborador-titulo">Adicionar colaborador</h2>
+                </div>
+
+                <button type="button" class="btn-fechar-modal" aria-label="Fechar colaborador" data-fechar-colaborador>
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <div class="modal-tfm-conteudo">
+                <div class="modal-colaborador-conteudo">
+                    <div class="campo campo-inteiro">
+                        <label for="modal-colaborador-nome">Nome do colaborador</label>
+                        <div class="autocomplete-wrapper">
+                            <div class="input-icon">
+                                <i class="bi bi-person"></i>
+                                <input id="modal-colaborador-nome" type="text" placeholder="Digite ou selecione o colaborador" autocomplete="off">
+                            </div>
+                            <div class="atividade-sugestoes" hidden></div>
+                        </div>
+                    </div>
+
+                    <div class="campo campo-inteiro">
+                        <label for="modal-colaborador-matricula">Matrícula</label>
+                        <div class="input-icon">
+                            <i class="bi bi-hash"></i>
+                            <input id="modal-colaborador-matricula" type="text" placeholder="Matrícula" inputmode="numeric" autocomplete="off">
+                        </div>
+                    </div>
+
+                    <div class="campo campo-inteiro">
+                        <label for="modal-colaborador-horas">Horas</label>
+                        <div class="input-icon">
+                            <i class="bi bi-clock-history"></i>
+                            <input id="modal-colaborador-horas" type="text" placeholder="Ex: 1.5" inputmode="decimal">
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn-confirmar-colaborador">
+                        <i class="bi bi-plus-lg"></i>
+                        <span>Adicionar colaborador</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div id="modal-revisao" class="modal-tfm" hidden>
+        <div class="modal-tfm-backdrop" data-fechar-revisao></div>
+        <section class="modal-tfm-painel modal-revisao-painel" role="dialog" aria-modal="true" aria-labelledby="modal-revisao-titulo">
+            <div class="modal-tfm-topo">
+                <div>
+                    <span>Revisão do apontamento</span>
+                    <h2 id="modal-revisao-titulo">Conferir antes de salvar</h2>
+                </div>
+
+                <button type="button" class="btn-fechar-modal" aria-label="Fechar revisão" data-fechar-revisao>
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <div class="modal-tfm-conteudo">
+                <div id="revisao-conteudo" class="revisao-conteudo"></div>
+
+                <div class="revisao-acoes">
+                    <button type="button" class="btn-imprimir-revisao">
+                        <i class="bi bi-printer"></i>
+                        <span>Imprimir comprovante</span>
+                    </button>
+
+                    <button type="button" class="btn-confirmar-salvamento">
+                        <i class="bi bi-check2-circle"></i>
+                        <span>Confirmar e salvar</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div id="modal-help" class="modal-tfm" hidden>
+        <div class="modal-tfm-backdrop" data-fechar-help></div>
+        <section class="modal-tfm-painel modal-help-painel" role="dialog" aria-modal="true" aria-labelledby="modal-help-titulo">
+            <div class="modal-tfm-topo">
+                <div>
+                    <span>Ajuda rápida</span>
+                    <h2 id="modal-help-titulo">Como usar o apontamento</h2>
+                </div>
+
+                <button type="button" class="btn-fechar-modal" aria-label="Fechar ajuda" data-fechar-help>
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <div class="modal-tfm-conteudo">
+                <div class="help-grid">
+                    <div class="help-item">
+                        <span>01</span>
+                        <div>
+                            <strong>Acesse o formulário</strong>
+                            <p>Informe seu nome e matrícula. Se seu nome ainda não aparecer, use a opção Não encontrei meu nome.</p>
+                        </div>
+                    </div>
+
+                    <div class="help-item">
+                        <span>02</span>
+                        <div>
+                            <strong>Preencha os dados principais</strong>
+                            <p>Informe início e fim do TFM, nome do colaborador, matrícula e turno.</p>
+                        </div>
+                    </div>
+
+                    <div class="help-item">
+                        <span>03</span>
+                        <div>
+                            <strong>Adicione colaboradores extras</strong>
+                            <p>Use Colaboradores adicionais quando mais de uma pessoa trabalhou no mesmo TFM. Informe nome e horas de cada pessoa.</p>
+                        </div>
+                    </div>
+
+                    <div class="help-item">
+                        <span>04</span>
+                        <div>
+                            <strong>Informe o TFM</strong>
+                            <p>Digite o número do TFM com 6 números e o código do projeto.</p>
+                        </div>
+                    </div>
+
+                    <div class="help-item">
+                        <span>05</span>
+                        <div>
+                            <strong>Anexe o documento se existir</strong>
+                            <p>Use PDF, PNG, JPG ou JPEG de até 5 MB. Se não tiver documento, o apontamento pode ser salvo sem anexo.</p>
+                        </div>
+                    </div>
+
+                    <div class="help-item">
+                        <span>06</span>
+                        <div>
+                            <strong>Registre as atividades</strong>
+                            <p>Selecione ou digite a atividade realizada, informe as horas trabalhadas com ponto e adicione observação quando necessário.</p>
+                        </div>
+                    </div>
+
+                    <div class="help-item">
+                        <span>07</span>
+                        <div>
+                            <strong>Salve o apontamento</strong>
+                            <p>Após preencher os campos corretamente, clique em Salvar Apontamento e aguarde até os dados serem salvos.</p>
+                        </div>
+                    </div>
+
+                    <div class="help-item">
+                        <span>08</span>
+                        <div>
+                            <strong>Consulte um TFM</strong>
+                            <p>Use o campo Consultar TFM para ver dados, atividades registradas e abrir o documento quando existir.</p>
+                        </div>
+                    </div>
+
+                    <div class="help-item">
+                        <span>09</span>
+                        <div>
+                            <strong>Sugira uma atividade</strong>
+                            <p>Se a atividade não aparecer na lista, use Sugerir atividade para enviar uma nova opção à liderança.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -142,6 +407,11 @@
                         <span>TFM Registrados</span>
                         <strong id="resumo-salvos">...</strong>
                     </div>
+
+                    <div class="resumo-item resumo-item-ultimo">
+                        <span>Último TFM</span>
+                        <strong id="resumo-ultimo-tfm">-</strong>
+                    </div>
                 </section>
 
             </div>
@@ -170,160 +440,47 @@
                 </section>
             </div>
 
-            <div id="modal-help" class="modal-tfm" hidden>
-                <div class="modal-tfm-backdrop" data-fechar-help></div>
-                <section class="modal-tfm-painel modal-help-painel" role="dialog" aria-modal="true" aria-labelledby="modal-help-titulo">
-                    <div class="modal-tfm-topo">
-                        <div>
-                            <span>Ajuda rápida</span>
-                            <h2 id="modal-help-titulo">Como usar o apontamento</h2>
-                        </div>
-
-                        <button type="button" class="btn-fechar-modal" aria-label="Fechar ajuda" data-fechar-help>
-                            <i class="bi bi-x-lg"></i>
-                        </button>
-                    </div>
-
-                    <div class="modal-tfm-conteudo">
-                        <div class="help-grid">
-                            <div class="help-item">
-                                <span>01</span>
-                                <div>
-                                    <strong>Preencha os dados principais</strong>
-                                    <p>Informe data, turno, nome do colaborador e matrícula.</p>
-                                </div>
-                            </div>
-
-                            <div class="help-item">
-                                <span>02</span>
-                                <div>
-                                    <strong>Informe o TFM</strong>
-                                    <p>Digite o número do TFM com 6 números e o código do projeto.</p>
-                                </div>
-                            </div>
-
-                            <div class="help-item">
-                                <span>03</span>
-                                <div>
-                                    <strong>Anexe o PDF se existir</strong>
-                                    <p>Use apenas PDF de até 5 MB. Se não tiver documento, o apontamento pode ser salvo sem anexo.</p>
-                                </div>
-                            </div>
-
-                            <div class="help-item">
-                                <span>04</span>
-                                <div>
-                                    <strong>Registre as atividades</strong>
-                                    <p>Selecione a atividade realizada na lista, informe as horas e adicione observação quando necessário.</p>
-                                </div>
-                            </div>
-
-                            <div class="help-item">
-                                <span>05</span>
-                                <div>
-                                    <strong>Salve o apontamento</strong>
-                                    <p>Após preencher os campos corretamente, clique em Salvar Apontamento e aguarde até ser salvo os dados.</p>
-                                </div>
-                            </div>
-
-                            <div class="help-item">
-                                <span>06</span>
-                                <div>
-                                    <strong>Consulte um TFM</strong>
-                                    <p>Use o campo Consultar TFM no topo para ver dados, atividades registradas e abrir o PDF quando existir.</p>
-                                </div>
-                            </div>
-
-                            <div class="help-item">
-                                <span>07</span>
-                                <div>
-                                    <strong>Sugira uma atividade</strong>
-                                    <p>Se a atividade não aparecer na lista, use o botão Sugerir atividade no topo da tela para enviar uma nova sugestão.</p>
-                                </div>
-                            </div>
-
-                            <div class="help-item">
-                                <span>08</span>
-                                <div>
-                                    <strong>Dúvidas</strong>
-                                    <p>Caso ainda estiver em dúvidas, entre em contato com a liderança.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </div>
-
             <div class="form-layout">
-                <div class="card card-busca">
-                    <div class="card-titulo">
-                        <i class="bi bi-search"></i>
-                        <h2>Consultar TFM</h2>
-                    </div>
-
-                    <div class="linha"></div>
-
-                    <div class="busca-tfm">
-                        <div class="campo">
-                            <label for="busca-tfm">Número do TFM</label>
-                            <div class="input-icon">
-                                <i class="bi bi-hash"></i>
-                                <input id="busca-tfm" type="text" placeholder="Digite o TFM" maxlength="6" minlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="off">
-                            </div>
+                <div class="form-coluna form-coluna-esquerda">
+                    <div class="card card-dados">
+                        <div class="card-titulo">
+                            <i class="bi bi-calendar-check"></i>
+                            <h2>Dados Principais</h2>
                         </div>
 
-                        <button type="button" class="btn-buscar">
-                            <i class="bi bi-search"></i>
-                            <span>Buscar</span>
-                        </button>
-                    </div>
+                        <div class="linha"></div>
 
-                    <div id="resultado-busca" class="resultado-busca" hidden></div>
-                </div>
-
-                <div class="card card-dados">
-                    <div class="card-titulo">
-                        <i class="bi bi-calendar-check"></i>
-                        <h2>Dados Principais</h2>
-                    </div>
-
-                    <div class="linha"></div>
-
-                    <div class="form-grid dados-grid">
-                        <div class="campo campo-metade">
-                            <label for="data">Data</label>
-                            <div class="input-icon">
-                                <i class="bi bi-calendar-event"></i>
-                                <input id="data" name="data" type="date" required>
-                            </div>
-                        </div>
-
-                        <div class="campo campo-metade">
-                            <label for="turno">Turno</label>
-                            <div class="input-icon">
-                                <i class="bi bi-clock"></i>
-                                <select id="turno" name="turno" required>
-                                    <option value="">Seu Turno</option>
-                                    <option>1º Turno</option>
-                                    <option>2º Turno</option>
-                                    <option>Administrativo</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="campo campo-inteiro">
-                            <label for="nome">Nome do Colaborador</label>
-                            <div class="autocomplete-wrapper">
+                        <div class="form-grid dados-grid">
+                            <div class="campo campo-metade">
+                                <label for="data-inicio-tfm">Data início do TFM</label>
                                 <div class="input-icon">
-                                    <i class="bi bi-person"></i>
-                                    <input id="nome" name="nome" type="text" class="colaborador-input" placeholder="Digite seu Nome" autocomplete="off" required>
+                                    <i class="bi bi-calendar-event"></i>
+                                    <input id="data-inicio-tfm" name="dataInicioTfm" type="date" required>
                                 </div>
-                                <div class="atividade-sugestoes" hidden></div>
+                            </div>
 
-                                <select id="colaboradores-opcoes" hidden>
-                               <option>Ailton Dos Reis Santana</option>
+                            <div class="campo campo-metade">
+                                <label for="data-fim-tfm">Data fim do TFM</label>
+                                <div class="input-icon">
+                                    <i class="bi bi-calendar-check"></i>
+                                    <input id="data-fim-tfm" name="dataFimTfm" type="date" required>
+                                </div>
+                            </div>
+
+                            <div class="campo campo-inteiro">
+                                <label for="nome">Nome do Colaborador</label>
+                                <div class="autocomplete-wrapper">
+                                    <div class="input-icon">
+                                        <i class="bi bi-person"></i>
+                                        <input id="nome" name="nome" type="text" class="colaborador-input" placeholder="Digite seu Nome" autocomplete="off" required>
+                                    </div>
+                                    <div class="atividade-sugestoes" hidden></div>
+
+                                    <select id="colaboradores-opcoes" hidden>
+                                   <option>Ailton Dos Reis Santana</option>
 <option>Airton Fonseca do Nascimento</option>
 <option>Albert de Almeida Libério</option>
+<option>Aldecir de Oliveira Chaves</option>
 <option>Caio Resende Soares</option>
 <option>Cláudio Roberto Miranda</option>
 <option>Cleiton De Souza</option>
@@ -351,30 +508,58 @@
 <option>Sueimer Batista Pereira</option>
 <option>Valdemi Amancio Do Nascimento</option>
 <option>Wender Bortoloto da Costa</option>
-                                </select>
+                                    </select>
+                                </div>
                             </div>
-                        </div>
 
-                        <div class="campo campo-inteiro">
-                            <label for="matricula">Matrícula</label>
-                            <div class="input-icon">
-                                <i class="bi bi-hash"></i>
-                                <input id="matricula" name="matricula" type="text" placeholder="Sua Matrícula" inputmode="numeric" autocomplete="off" required>
+                            <div class="campo campo-metade">
+                                <label for="matricula">Matrícula</label>
+                                <div class="input-icon">
+                                    <i class="bi bi-hash"></i>
+                                    <input id="matricula" name="matricula" type="text" placeholder="Sua Matrícula" inputmode="numeric" autocomplete="off" required>
+                                </div>
+                            </div>
+
+                            <div class="campo campo-metade campo-turno">
+                                <label for="turno">Turno</label>
+                                <div class="input-icon">
+                                    <i class="bi bi-clock"></i>
+                                    <select id="turno" name="turno" required>
+                                        <option value="">Seu Turno</option>
+                                        <option>1º Turno</option>
+                                        <option>2º Turno</option>
+                                        <option>Administrativo</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="campo campo-inteiro colaboradores-adicionais-campo">
+                                <div class="colaboradores-adicionais-topo">
+                                    <div>
+                                        <label>Colaboradores adicionais</label>
+                                        <small>Use quando mais de uma pessoa trabalhou no mesmo TFM.</small>
+                                    </div>
+
+                                    <button type="button" class="btn-add-colaborador">
+                                        <i class="bi bi-person-plus"></i>
+                                        <span>Adicionar colaborador</span>
+                                    </button>
+                                </div>
+
+                                <div id="colaboradores-adicionais-lista" class="colaboradores-adicionais-lista"></div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="card card-atividade" id="atividades-container">
-                    <div class="card-titulo">
-                        <i class="bi bi-hash"></i>
-                        <h2>TFM</h2>
-                    </div>
+                    <div class="card card-atividade" id="atividades-container">
+                        <div class="card-titulo">
+                            <i class="bi bi-hash"></i>
+                            <h2>TFM</h2>
+                        </div>
 
-                    <div class="linha"></div>
+                        <div class="linha"></div>
 
-                    <div id="atividades-lista">
-                        <div class="atividade-item">
+                        <div id="atividades-lista">
                             <div class="form-grid atividade-grid">
                                 <div class="campo campo-inteiro">
                                     <label for="tfm">Número do TFM</label>
@@ -393,80 +578,109 @@
                                 </div>
 
                                 <div class="campo campo-inteiro documento">
-                                    <label for="documento-1">Anexar PDF</label>
+                                    <label for="documento-1">Anexar imagem</label>
                                     <div class="input-icon input-file">
-                                        <i class="bi bi-file-earmark-pdf"></i>
-                                        <label class="arquivo-botao" for="documento-1">Escolher PDF</label>
+                                        <i class="bi bi-file-earmark-arrow-up"></i>
+                                        <label class="arquivo-botao" for="documento-1">Escolher arquivos</label>
                                         <span class="arquivo-nome">Nenhum arquivo selecionado</span>
-                                        <input id="documento-1" name="documento" type="file" class="documento-input" accept="application/pdf">
+                                        <input id="documento-1" name="documento[]" type="file" class="documento-input" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" multiple>
                                     </div>
-                                    <small>Somente arquivos PDF até 5 MB.</small>
+                                    <div class="documento-preview" aria-live="polite"></div>
+                                    <small>Somente PDF, PNG, JPG ou JPEG até 5 MB cada.</small>
                                 </div>
-
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="card card-detalhes" id="detalhes-container">
+                <div class="form-coluna form-coluna-centro">
+                    <div class="card card-detalhes" id="detalhes-container">
+                        <div class="card-titulo">
+                            <i class="bi bi-list-task"></i>
+                            <h2>Atividades Realizadas</h2>
+                        </div>
+
+                        <div class="linha"></div>
+
+                        <div id="detalhes-lista">
+                            <div class="detalhes-item bloco-item">
+                                <div class="bloco-cabecalho">
+                                    <span class="bloco-numero">01</span>
+                                    <div class="bloco-cabecalho-titulo">
+                                        <strong>Atividade realizada</strong>
+                                        <span>Obrigatória</span>
+                                    </div>
+                                </div>
+
+                                <div class="detalhes-grid">
+                                    <div class="campo campo-inteiro">
+                                        <label for="atividade-1">Atividade Realizada</label>
+                                        <div class="autocomplete-wrapper">
+                                            <div class="input-icon">
+                                                <i class="bi bi-list-ul"></i>
+                                                <input id="atividade-1" name="atividade[]" type="text" class="atividade-input" placeholder="Digite ou selecione a atividade" autocomplete="off" required>
+                                            </div>
+                                            <div class="atividade-sugestoes" hidden></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="campo campo-horas">
+                                        <label for="horas-1">Horas Trabalhadas</label>
+                                        <div class="input-icon">
+                                            <i class="bi bi-clock-history"></i>
+                                            <input id="horas-1" name="horas[]" type="text" class="horas-input" placeholder="Ex: 1.5" inputmode="decimal" pattern="[0-9]+(\.[0-9]+)?" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="campo observacao">
+                                        <label for="observacao-1">Observação</label>
+                                        <div class="input-icon input-textarea">
+                                            <i class="bi bi-chat-left-text"></i>
+                                            <textarea id="observacao-1" name="observacao[]" rows="3" class="observacao-input" placeholder="Digite alguma observação sobre a atividade"></textarea>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="adicionar-atividade-box">
+                            <button type="button" class="btn-add">
+                                <i class="bi bi-plus-lg"></i>
+                                Adicionar Outra Atividade
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-coluna form-coluna-direita">
+                    <div class="card card-busca">
                     <div class="card-titulo">
-                        <i class="bi bi-list-task"></i>
-                        <h2>Atividades Realizadas</h2>
+                        <i class="bi bi-search"></i>
+                        <h2>Consultar TFM</h2>
                     </div>
 
                     <div class="linha"></div>
 
-                    <div id="detalhes-lista">
-                        <div class="detalhes-item bloco-item">
-                            <div class="bloco-cabecalho">
-                                <span class="bloco-numero">01</span>
-                                <div class="bloco-cabecalho-titulo">
-                                    <strong>Atividade realizada</strong>
-                                    <span>Obrigatória</span>
-                                </div>
-                            </div>
-
-                            <div class="detalhes-grid">
-                                <div class="campo campo-inteiro">
-                                    <label for="atividade-1">Atividade Realizada</label>
-                                    <div class="autocomplete-wrapper">
-                                        <div class="input-icon">
-                                            <i class="bi bi-list-ul"></i>
-                                            <input id="atividade-1" name="atividade[]" type="text" class="atividade-input" placeholder="Selecione uma atividade da lista" autocomplete="off" required>
-                                        </div>
-                                        <div class="atividade-sugestoes" hidden></div>
-                                    </div>
-                                </div>
-
-                                <div class="campo campo-inteiro">
-                                    <label for="horas-1">Horas Trabalhadas</label>
-                                    <div class="input-icon">
-                                        <i class="bi bi-clock-history"></i>
-                                        <input id="horas-1" name="horas[]" type="number" class="horas-input" min="0.1" step="0.1" placeholder="Ex: 2.5" required>
-                                    </div>
-                                </div>
-
-                                <div class="campo observacao">
-                                    <label for="observacao-1">Observação</label>
-                                    <div class="input-icon">
-                                        <i class="bi bi-chat-left-text"></i>
-                                        <input id="observacao-1" name="observacao[]" type="text" class="observacao-input" placeholder="Digite alguma observação sobre a atividade">
-                                    </div>
-                                </div>
-
+                    <div class="busca-tfm">
+                        <div class="campo">
+                            <label for="busca-tfm">Número do TFM</label>
+                            <div class="input-icon">
+                                <i class="bi bi-hash"></i>
+                                <input id="busca-tfm" type="text" placeholder="Digite o TFM" maxlength="6" minlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="off">
                             </div>
                         </div>
-                    </div>
 
-                    <div class="adicionar-atividade-box">
-                        <button type="button" class="btn-add">
-                            <i class="bi bi-plus-lg"></i>
-                            Adicionar Outra Atividade
+                        <button type="button" class="btn-buscar">
+                            <i class="bi bi-search"></i>
+                            <span>Buscar</span>
                         </button>
                     </div>
+
+                    <div id="resultado-busca" class="resultado-busca" hidden></div>
                 </div>
 
-                <section class="card card-historico" aria-labelledby="historico-titulo">
+                    <section class="card card-historico" aria-labelledby="historico-titulo">
                     <div class="card-titulo">
                         <i class="bi bi-clock-counterclockwise"></i>
                         <h2 id="historico-titulo">TFM Realizados</h2>
@@ -475,19 +689,20 @@
                     <div class="linha"></div>
 
                     <div class="historico-topo">
-                        <p>Últimas 2 atividades salvas na planilha.</p>
+                        <p>Últimas 3 atividades salvas na planilha.</p>
                     </div>
 
                     <div id="historico-lista" class="historico-lista"></div>
                 </section>
+
+                </div>
+
             </div>
 
-            <div class="botoes">
-                <button type="submit" class="btn-salvar">
-                    <i class="bi bi-floppy"></i>
-                    <span>Salvar Apontamento</span>
-                </button>
-            </div>
+            <button type="submit" class="btn-salvar btn-salvar-flutuante">
+                <i class="bi bi-floppy"></i>
+                <span>Salvar Apontamento</span>
+            </button>
 
         </form>
     </main>

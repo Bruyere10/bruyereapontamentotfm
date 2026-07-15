@@ -59,7 +59,9 @@ const atividadesDisponiveis = [
     "TFM Cancelada",
     "Troca de motor Diesel em Cela",
     "Preparação e Alinhamento de Motor Diesel 2.2 em Cela",
-    "Troca de componentes no veiculo"
+    "Troca de componentes no veiculo",
+    "Instrumentação de coletor de admissão",
+    "Troca de catalisador no motor na cela"
 ];
 
 const btnAdd = document.querySelector(".btn-add");
@@ -78,26 +80,66 @@ const modalTfm = document.getElementById("modal-tfm");
 const modalTfmConteudo = document.getElementById("modal-tfm-conteudo");
 const modalSugestao = document.getElementById("modal-sugestao");
 const modalAtividade = document.getElementById("modal-atividade");
+const modalColaborador = document.getElementById("modal-colaborador");
+const modalRevisao = document.getElementById("modal-revisao");
 const modalHelp = document.getElementById("modal-help");
-const btnHelp = document.querySelector(".btn-help");
+const botoesHelp = document.querySelectorAll(".btn-help");
 const btnConfirmarAtividade = document.querySelector(".btn-confirmar-atividade");
+const btnConfirmarColaborador = document.querySelector(".btn-confirmar-colaborador");
+const btnConfirmarSalvamento = document.querySelector(".btn-confirmar-salvamento");
+const btnImprimirRevisao = document.querySelector(".btn-imprimir-revisao");
+const telaLogin = document.getElementById("tela-login");
+const loginNomeInput = document.getElementById("login-nome");
+const loginMatriculaInput = document.getElementById("login-matricula");
+const loginAlternativo = document.getElementById("login-alternativo");
+const novoLoginNomeInput = document.getElementById("novo-login-nome");
+const novoLoginMatriculaInput = document.getElementById("novo-login-matricula");
+const loginFeedback = document.getElementById("login-feedback");
+const btnEntrarLogin = document.querySelector(".btn-entrar-login");
+const btnLoginAlternativo = document.querySelector(".btn-login-alternativo");
+const btnEntrarPendente = document.querySelector(".btn-entrar-pendente");
+const btnSairLogin = document.querySelector(".btn-sair-login");
+const usuarioLogado = document.getElementById("usuario-logado");
+const usuarioLogadoNome = document.getElementById("usuario-logado-nome");
 const matriculaInput = document.getElementById("matricula");
 const modalAtividadeInput = document.getElementById("modal-atividade-input");
-const modalHorasInput = document.getElementById("modal-horas-input");
 const modalObservacaoInput = document.getElementById("modal-observacao-input");
+const modalHorasInput = document.getElementById("modal-horas-input");
+const modalColaboradorNomeInput = document.getElementById("modal-colaborador-nome");
+const modalColaboradorMatriculaInput = document.getElementById("modal-colaborador-matricula");
+const modalColaboradorHorasInput = document.getElementById("modal-colaborador-horas");
 const feedbackGlobal = document.getElementById("feedback-global");
 const resumoAtividades = document.getElementById("resumo-atividades");
 const resumoSalvos = document.getElementById("resumo-salvos");
+const resumoUltimoTfm = document.getElementById("resumo-ultimo-tfm");
 const historicoLista = document.getElementById("historico-lista");
+const revisaoConteudo = document.getElementById("revisao-conteudo");
+const colaboradoresAdicionaisLista = document.getElementById("colaboradores-adicionais-lista");
+const btnAddColaborador = document.querySelector(".btn-add-colaborador");
+const LOGIN_CHAVE = "stellantisUsuarioLogado";
 const HISTORICO_CHAVE = "stellantisHistoricoApontamentos";
-const LIMITE_HISTORICO = 2;
+const LIMITE_HISTORICO = 3;
+const TIPOS_DOCUMENTO_PERMITIDOS = ["application/pdf", "image/png", "image/jpeg"];
+const ETAPAS_SALVAMENTO = [
+    "Pegando os dados...",
+    "Conferindo anexos...",
+    "Salvando na planilha...",
+    "Aguarde, quase lá..."
+];
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycpTr1Vj5nCByX2gYKvaXnhw7EiBUYqlnRq7ClSoqr2ZNBNvAUqvW2br6ksyAJDcxO/exec";
 let resumoPlanilhaCarregado = false;
+let historicoAtual = [];
+let apontamentoPendente = null;
+let usuarioAtual = null;
+let atividadeEmEdicao = null;
+let colaboradorEmEdicao = null;
+let salvamentoIntervalo = null;
 const colaboradores = [
     { matricula: "87033", nome: "Leonel Barros Pereira Da Silva" },
     { matricula: "61449", nome: "Ailton Dos Reis Santana" },
     { matricula: "61618", nome: "Airton Fonseca do Nascimento" },
     { matricula: "90079", nome: "Albert de Almeida Libério" },
+    { matricula: "61557", nome: "Aldecir de Oliveira Chaves" },
     { matricula: "105741", nome: "Caio Resende Soares" },
     { matricula: "61526", nome: "Cláudio Roberto Miranda" },
     { matricula: "61461", nome: "Cleiton De Souza" },
@@ -134,16 +176,18 @@ function normalizarTexto(texto) {
         .toLowerCase();
 }
 
-function buscarAtividadeDisponivel(valor) {
-    const valorNormalizado = normalizarTexto(valor.trim());
-    return atividadesDisponiveis.find((atividade) => normalizarTexto(atividade) === valorNormalizado) || "";
-}
-
 function fecharSugestoes() {
     document.querySelectorAll(".atividade-sugestoes").forEach((lista) => {
         lista.hidden = true;
         lista.innerHTML = "";
     });
+}
+
+function correspondeBusca(texto, busca) {
+    const textoNormalizado = normalizarTexto(texto);
+    const termos = normalizarTexto(busca).split(/\s+/).filter(Boolean);
+
+    return termos.every((termo) => textoNormalizado.includes(termo));
 }
 
 function mostrarFeedback(mensagem, tipo = "sucesso") {
@@ -153,37 +197,38 @@ function mostrarFeedback(mensagem, tipo = "sucesso") {
     feedbackGlobal.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
-function mostrarFeedbackAtividadeInvalida(input) {
-    const atividadeDigitada = input.value.trim();
-    const mensagem = document.createElement("span");
-    const botaoSugerir = document.createElement("button");
-
-    feedbackGlobal.hidden = false;
-    feedbackGlobal.className = "feedback-global erro feedback-com-acao";
-    feedbackGlobal.innerHTML = "";
-
-    mensagem.textContent = "Selecione somente atividades que aparecem na lista.";
-    botaoSugerir.type = "button";
-    botaoSugerir.className = "feedback-acao";
-    botaoSugerir.textContent = "Sugerir atividade";
-
-    botaoSugerir.addEventListener("click", () => {
-        sugestaoAtividadeInput.value = atividadeDigitada;
-        abrirModalSugestao();
-    });
-
-    feedbackGlobal.appendChild(mensagem);
-    feedbackGlobal.appendChild(botaoSugerir);
-    feedbackGlobal.scrollIntoView({ behavior: "smooth", block: "nearest" });
-}
-
 function limparFeedback() {
     feedbackGlobal.hidden = true;
     feedbackGlobal.textContent = "";
 }
 
-function marcarCampo(input, invalido) {
+function mostrarFeedbackLogin(mensagem, tipo = "erro") {
+    loginFeedback.hidden = false;
+    loginFeedback.className = `login-feedback ${tipo}`;
+    loginFeedback.textContent = mensagem;
+}
+
+function limparFeedbackLogin() {
+    loginFeedback.hidden = true;
+    loginFeedback.textContent = "";
+}
+
+function limparErroCampo(input) {
+    const campo = input.closest(".campo");
+    campo?.querySelector(".campo-mensagem")?.remove();
+}
+
+function marcarCampo(input, invalido, mensagem = "") {
     input.closest(".input-icon")?.classList.toggle("campo-invalido", invalido);
+    limparErroCampo(input);
+
+    if (invalido && mensagem) {
+        const campo = input.closest(".campo");
+        const alerta = document.createElement("small");
+        alerta.className = "campo-mensagem";
+        alerta.textContent = mensagem;
+        campo?.appendChild(alerta);
+    }
 }
 
 function limitarParaNumeros(input, limite) {
@@ -206,19 +251,70 @@ function salvarHistorico(item) {
 }
 
 function configurarDataAtual() {
-    const dataInput = document.getElementById("data");
+    const dataInicioInput = document.getElementById("data-inicio-tfm");
+    const dataFimInput = document.getElementById("data-fim-tfm");
+    const dataAtual = new Date().toISOString().slice(0, 10);
 
-    if (!dataInput.value) {
-        dataInput.value = new Date().toISOString().slice(0, 10);
+    if (!dataInicioInput.value) {
+        dataInicioInput.value = dataAtual;
+    }
+
+    if (!dataFimInput.value) {
+        dataFimInput.value = dataAtual;
     }
 }
 
-function calcularTotalHoras() {
-    return Array.from(document.querySelectorAll(".horas-input"))
-        .reduce((total, input) => total + Number(input.value || 0), 0);
+function obterLoginSalvo() {
+    try {
+        return JSON.parse(localStorage.getItem(LOGIN_CHAVE));
+    } catch (erro) {
+        return null;
+    }
+}
+
+function salvarLogin(colaborador) {
+    localStorage.setItem(LOGIN_CHAVE, JSON.stringify({
+        nome: colaborador.nome,
+        matricula: colaborador.matricula,
+        cadastroPendente: Boolean(colaborador.cadastroPendente)
+    }));
+}
+
+function criarDataLocal(valor) {
+    const [ano, mes, dia] = valor.split("-").map(Number);
+    return new Date(ano, mes - 1, dia);
+}
+
+function criarDatasPeriodo(dataInicio, dataFim) {
+    const inicio = criarDataLocal(dataInicio);
+    const fim = criarDataLocal(dataFim);
+    const datas = [];
+
+    for (let data = new Date(inicio); data <= fim; data.setDate(data.getDate() + 1)) {
+        datas.push(new Date(data).toISOString().slice(0, 10));
+    }
+
+    return datas;
+}
+
+function distribuirHorasNoPeriodo(horas, dataInicio, dataFim) {
+    const datas = criarDatasPeriodo(dataInicio, dataFim);
+    const totalCentavosHora = Math.round(Number(horas || 0) * 100);
+    const base = Math.floor(totalCentavosHora / datas.length);
+    const resto = totalCentavosHora % datas.length;
+
+    return datas.map((data, index) => ({
+        data,
+        horas: Number(((base + (index < resto ? 1 : 0)) / 100).toFixed(2))
+    }));
 }
 
 function atualizarResumo() {
+    const historico = historicoAtual.length ? historicoAtual : obterHistorico();
+    const ultimoTfm = historico.find((item) => item.tfm)?.tfm;
+
+    resumoUltimoTfm.textContent = ultimoTfm || "-";
+
     if (resumoPlanilhaCarregado) {
         return;
     }
@@ -253,9 +349,10 @@ async function carregarResumoPlanilha() {
 }
 
 function renderizarHistorico(historico = obterHistorico()) {
+    historicoAtual = Array.isArray(historico) ? historico : [];
     historicoLista.innerHTML = "";
 
-    if (historico.length === 0) {
+    if (historicoAtual.length === 0) {
         const vazio = document.createElement("p");
         vazio.className = "historico-vazio";
         vazio.textContent = "Nenhuma atividade encontrada na planilha ainda.";
@@ -264,25 +361,22 @@ function renderizarHistorico(historico = obterHistorico()) {
         return;
     }
 
-    historico.slice(0, LIMITE_HISTORICO).forEach((item) => {
+    historicoAtual.slice(0, LIMITE_HISTORICO).forEach((item) => {
         const registro = document.createElement("article");
         const info = document.createElement("div");
         const atividade = document.createElement("strong");
         const detalhes = document.createElement("span");
         const tfm = document.createElement("span");
-        const horas = document.createElement("span");
 
         registro.className = "historico-item";
         atividade.textContent = item.atividade || `Registro anterior com ${item.atividades || 1} atividade(s)`;
         detalhes.textContent = [item.nome, formatarData(item.data)].filter(Boolean).join(" - ");
         tfm.textContent = `TFM ${item.tfm}`;
-        horas.textContent = `${item.horas}h`;
 
         info.appendChild(atividade);
         info.appendChild(detalhes);
         registro.appendChild(info);
         registro.appendChild(tfm);
-        registro.appendChild(horas);
         historicoLista.appendChild(registro);
     });
 
@@ -314,7 +408,9 @@ function renumerarAtividades() {
     document.querySelectorAll(".detalhes-item").forEach((item, index) => {
         const indice = index + 1;
         item.querySelector(".bloco-numero").textContent = String(indice).padStart(2, "0");
-        item.querySelector(".bloco-cabecalho strong").textContent = `Atividade realizada ${indice}`;
+        item.querySelector(".bloco-cabecalho strong").textContent = item.classList.contains("detalhes-item-compacto")
+            ? `Atividade ${indice}`
+            : "Atividade realizada";
     });
     atualizarResumo();
 }
@@ -324,17 +420,164 @@ function buscarColaboradorPorNome(nome) {
     return colaboradores.find((colaborador) => normalizarTexto(colaborador.nome) === nomeNormalizado);
 }
 
+function buscarColaboradorPorMatricula(matricula) {
+    return colaboradores.find((colaborador) => colaborador.matricula === matricula.trim());
+}
+
+function validarCredenciais(nome, matricula) {
+    const colaborador = buscarColaboradorPorNome(nome);
+
+    if (!colaborador || colaborador.matricula !== matricula.trim()) {
+        return null;
+    }
+
+    return colaborador;
+}
+
+function validarLoginPendente(loginSalvo) {
+    if (!loginSalvo?.cadastroPendente) {
+        return null;
+    }
+
+    const nome = String(loginSalvo.nome || "").trim();
+    const matricula = String(loginSalvo.matricula || "").trim();
+
+    if (nome.length < 6 || !/^\d{4,6}$/.test(matricula)) {
+        return null;
+    }
+
+    return { nome, matricula, cadastroPendente: true };
+}
+
 function atualizarMatriculaPorNome(nome) {
     const colaborador = buscarColaboradorPorNome(nome);
     matriculaInput.value = colaborador ? colaborador.matricula : "";
 }
 
+function atualizarMatriculaColaboradorAdicional(input, nome) {
+    const item = input.closest(".colaborador-adicional-item");
+    const matricula = item?.querySelector(".colaborador-adicional-matricula");
+    const colaborador = buscarColaboradorPorNome(nome);
+
+    if (matricula) {
+        matricula.value = colaborador ? colaborador.matricula : "";
+    }
+}
+
+function atualizarMatriculaModalColaborador(nome) {
+    const colaborador = buscarColaboradorPorNome(nome);
+    modalColaboradorMatriculaInput.value = colaborador ? colaborador.matricula : "";
+}
+
+function atualizarMatriculaLoginPorNome(nome) {
+    const colaborador = buscarColaboradorPorNome(nome);
+    loginMatriculaInput.value = colaborador ? colaborador.matricula : "";
+}
+
+function aplicarUsuarioLogado(colaborador) {
+    usuarioAtual = colaborador;
+    document.body.classList.remove("login-bloqueado");
+    telaLogin.hidden = true;
+    usuarioLogado.hidden = false;
+    usuarioLogadoNome.textContent = colaborador.cadastroPendente ? `${colaborador.nome} (cadastro pendente)` : colaborador.nome;
+    document.getElementById("nome").value = colaborador.nome;
+    matriculaInput.value = colaborador.matricula;
+    limparFeedbackLogin();
+}
+
+function exigirLogin() {
+    const loginSalvo = obterLoginSalvo();
+    const colaborador = loginSalvo
+        ? validarCredenciais(loginSalvo.nome, loginSalvo.matricula) || validarLoginPendente(loginSalvo)
+        : null;
+
+    if (colaborador) {
+        aplicarUsuarioLogado(colaborador);
+        return;
+    }
+
+    localStorage.removeItem(LOGIN_CHAVE);
+    usuarioAtual = null;
+    document.body.classList.add("login-bloqueado");
+    telaLogin.hidden = false;
+    usuarioLogado.hidden = true;
+    loginAlternativo.hidden = true;
+    loginNomeInput.focus();
+    fecharSugestoes();
+}
+
+function alternarLoginPendente() {
+    loginAlternativo.hidden = !loginAlternativo.hidden;
+
+    if (!loginAlternativo.hidden) {
+        novoLoginNomeInput.focus();
+    }
+}
+
+function entrarLogin() {
+    const nome = loginNomeInput.value.trim();
+    const matricula = loginMatriculaInput.value.trim();
+    const colaborador = validarCredenciais(nome, matricula);
+
+    marcarCampo(loginNomeInput, !nome, "Informe seu nome.");
+    marcarCampo(loginMatriculaInput, !matricula, "Informe sua matrícula.");
+
+    if (!colaborador) {
+        mostrarFeedbackLogin("Nome e matrícula não conferem com a lista de colaboradores.");
+        return;
+    }
+
+    salvarLogin(colaborador);
+    aplicarUsuarioLogado(colaborador);
+}
+
+function entrarLoginPendente() {
+    const nome = novoLoginNomeInput.value.trim();
+    const matricula = novoLoginMatriculaInput.value.trim();
+    const nomeJaExiste = buscarColaboradorPorNome(nome);
+    const matriculaJaExiste = buscarColaboradorPorMatricula(matricula);
+    const nomeInvalido = nome.length < 6 || !nome.includes(" ");
+    const matriculaInvalida = !/^\d{4,6}$/.test(matricula);
+
+    marcarCampo(novoLoginNomeInput, nomeInvalido, "Digite seu nome completo.");
+    marcarCampo(novoLoginMatriculaInput, matriculaInvalida, "Digite uma matrícula válida.");
+
+    if (nomeInvalido || matriculaInvalida) {
+        mostrarFeedbackLogin("Preencha nome completo e matrícula para solicitar inclusão.");
+        return;
+    }
+
+    if (nomeJaExiste || matriculaJaExiste) {
+        mostrarFeedbackLogin("Esse nome ou matrícula já existe na lista. Use o acesso principal acima.", "aviso");
+        return;
+    }
+
+    const colaborador = { nome, matricula, cadastroPendente: true };
+    salvarLogin(colaborador);
+    aplicarUsuarioLogado(colaborador);
+    registrarCadastroPendente(colaborador);
+    mostrarFeedback("Acesso liberado como cadastro pendente. Solicite a inclusão oficial à liderança.", "aviso");
+}
+
+function sairLogin() {
+    localStorage.removeItem(LOGIN_CHAVE);
+    usuarioAtual = null;
+    loginNomeInput.value = "";
+    loginMatriculaInput.value = "";
+    novoLoginNomeInput.value = "";
+    novoLoginMatriculaInput.value = "";
+    document.getElementById("nome").value = "";
+    matriculaInput.value = "";
+    exigirLogin();
+}
+
 function mostrarSugestoes(input, opcoes, aoSelecionar) {
     const wrapper = input.closest(".autocomplete-wrapper");
     const lista = wrapper.querySelector(".atividade-sugestoes");
-    const busca = normalizarTexto(input.value.trim());
+    const busca = input.value.trim();
     const sugestoes = opcoes
-        .filter((opcao) => normalizarTexto(opcao).includes(busca));
+        .filter((opcao) => correspondeBusca(opcao, busca))
+        .sort((primeira, segunda) => normalizarTexto(primeira).indexOf(normalizarTexto(busca)) - normalizarTexto(segunda).indexOf(normalizarTexto(busca)));
 
     lista.innerHTML = "";
 
@@ -377,14 +620,111 @@ function configurarDocumento(input) {
     const nomeArquivo = input.closest(".input-file").querySelector(".arquivo-nome");
 
     input.addEventListener("change", () => {
-        nomeArquivo.textContent = input.files[0]?.name || "Nenhum arquivo selecionado";
+        const arquivos = Array.from(input.files || []);
+        nomeArquivo.textContent = arquivos.length
+            ? arquivos.map((arquivo) => arquivo.name).join(", ")
+            : "Nenhum arquivo selecionado";
     });
+}
+
+function criarColaboradorAdicionalItem(dados = {}) {
+    const item = document.createElement("div");
+    item.className = "colaborador-adicional-item bloco-item detalhes-item-compacto";
+    item.innerHTML = `
+        <div class="bloco-cabecalho">
+            <span class="bloco-numero" aria-label="Colaborador adicional"><i class="bi bi-person"></i></span>
+            <div class="atividade-resumo-acoes">
+                <button type="button" class="btn-editar-colaborador" aria-label="Editar colaborador adicional">
+                    <i class="bi bi-pencil-square"></i>
+                    <span>Editar</span>
+                </button>
+                <button type="button" class="btn-remover-colaborador" aria-label="Remover colaborador adicional">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </div>
+        </div>
+
+        <input type="hidden" class="colaborador-adicional-nome">
+        <input type="hidden" class="colaborador-adicional-matricula">
+        <input type="hidden" class="colaborador-adicional-horas">
+    `;
+
+    item.querySelector(".colaborador-adicional-nome").value = dados.nome || "";
+    item.querySelector(".colaborador-adicional-matricula").value = dados.matricula || "";
+    item.querySelector(".colaborador-adicional-horas").value = dados.horas || "";
+    atualizarResumoColaboradorAdicional(item);
+
+    return item;
+}
+
+function adicionarColaboradorAdicional(dados = {}) {
+    const item = criarColaboradorAdicionalItem(dados);
+    colaboradoresAdicionaisLista.appendChild(item);
+    atualizarNumeracaoColaboradoresAdicionais();
+}
+
+function atualizarResumoColaboradorAdicional(item) {
+    const nome = item.querySelector(".colaborador-adicional-nome")?.value.trim() || "colaborador adicional";
+    const matricula = item.querySelector(".colaborador-adicional-matricula")?.value.trim();
+    const horas = item.querySelector(".colaborador-adicional-horas")?.value.trim();
+    const icone = item.querySelector(".bloco-numero");
+
+    if (icone) {
+        icone.title = `${nome}${matricula ? ` - ${matricula}` : ""}${horas ? ` - ${horas}h` : ""}`;
+    }
+}
+
+function atualizarNumeracaoColaboradoresAdicionais() {
+    document.querySelectorAll(".colaborador-adicional-item").forEach((item, index) => {
+        const icone = item.querySelector(".bloco-numero");
+
+        if (icone) {
+            icone.setAttribute("aria-label", `Colaborador adicional ${index + 1}`);
+        }
+    });
+}
+
+function limparColaboradoresAdicionais() {
+    colaboradoresAdicionaisLista.innerHTML = "";
+}
+
+function renderizarColaboradoresAdicionais(colaboradores = []) {
+    limparColaboradoresAdicionais();
+    colaboradores.forEach((colaborador) => adicionarColaboradorAdicional(colaborador));
 }
 
 function criarDetalhesItem(indice) {
     const novoDetalhe = document.createElement("div");
     novoDetalhe.classList.add("detalhes-item", "bloco-item");
     const numeroFormatado = String(indice).padStart(2, "0");
+
+    if (indice > 1) {
+        novoDetalhe.classList.add("detalhes-item-compacto");
+        novoDetalhe.innerHTML = `
+            <div class="bloco-cabecalho">
+                <span class="bloco-numero">${numeroFormatado}</span>
+                <div class="bloco-cabecalho-titulo">
+                    <strong>Atividade ${indice}</strong>
+                    <span class="atividade-resumo-texto">Sem atividade informada</span>
+                </div>
+                <div class="atividade-resumo-acoes">
+                    <button type="button" class="btn-editar-atividade" aria-label="Editar atividade ${indice}">
+                        <i class="bi bi-pencil-square"></i>
+                        <span>Editar</span>
+                    </button>
+                    <button type="button" class="btn-remover-atividade" aria-label="Remover atividade ${indice}">
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                </div>
+            </div>
+
+            <input id="atividade-${indice}" name="atividade[]" type="hidden" class="atividade-input" required>
+            <input id="horas-${indice}" name="horas[]" type="hidden" class="horas-input" required>
+            <input id="observacao-${indice}" name="observacao[]" type="hidden" class="observacao-input">
+        `;
+
+        return novoDetalhe;
+    }
 
     novoDetalhe.innerHTML = `
         <div class="bloco-cabecalho">
@@ -403,25 +743,25 @@ function criarDetalhesItem(indice) {
                 <div class="autocomplete-wrapper">
                     <div class="input-icon">
                         <i class="bi bi-list-ul"></i>
-                        <input id="atividade-${indice}" name="atividade[]" type="text" class="atividade-input" placeholder="Selecione uma atividade da lista" autocomplete="off" required>
+                        <input id="atividade-${indice}" name="atividade[]" type="text" class="atividade-input" placeholder="Digite ou selecione a atividade" autocomplete="off" required>
                     </div>
                     <div class="atividade-sugestoes" hidden></div>
                 </div>
             </div>
 
-            <div class="campo campo-inteiro">
+            <div class="campo campo-horas">
                 <label for="horas-${indice}">Horas Trabalhadas</label>
                 <div class="input-icon">
                     <i class="bi bi-clock-history"></i>
-                    <input id="horas-${indice}" name="horas[]" type="number" class="horas-input" min="0.1" step="0.1" placeholder="Ex: 2.5" required>
+                    <input id="horas-${indice}" name="horas[]" type="text" class="horas-input" placeholder="Ex: 1.5" inputmode="decimal" pattern="[0-9]+(\\.[0-9]+)?" required>
                 </div>
             </div>
 
             <div class="campo observacao">
                 <label for="observacao-${indice}">Observação da atividade ${indice}</label>
-                <div class="input-icon">
+                <div class="input-icon input-textarea">
                     <i class="bi bi-chat-left-text"></i>
-                    <input id="observacao-${indice}" name="observacao[]" type="text" class="observacao-input" placeholder="Digite alguma observação sobre a atividade">
+                    <textarea id="observacao-${indice}" name="observacao[]" rows="3" class="observacao-input" placeholder="Digite alguma observação sobre a atividade"></textarea>
                 </div>
             </div>
 
@@ -429,6 +769,18 @@ function criarDetalhesItem(indice) {
     `;
 
     return novoDetalhe;
+}
+
+function atualizarResumoAtividadeItem(item) {
+    const atividade = item.querySelector(".atividade-input")?.value.trim() || "Sem atividade informada";
+    const horas = item.querySelector(".horas-input")?.value.trim();
+    const resumo = item.querySelector(".atividade-resumo-texto");
+
+    if (!resumo) {
+        return;
+    }
+
+    resumo.textContent = horas ? `${atividade} - ${horas}h` : atividade;
 }
 
 function converterArquivoParaBase64(arquivo) {
@@ -441,47 +793,88 @@ function converterArquivoParaBase64(arquivo) {
     });
 }
 
-async function prepararDocumento(input) {
-    const arquivo = input.files[0];
+async function prepararDocumentos(input) {
+    const arquivos = Array.from(input.files || []);
 
-    if (!arquivo) {
-        return null;
+    if (arquivos.length === 0) {
+        return [];
     }
 
-    if (arquivo.type !== "application/pdf") {
-        throw new Error("Anexe apenas arquivos PDF.");
-    }
+    return Promise.all(arquivos.map(async (arquivo) => {
+        if (!TIPOS_DOCUMENTO_PERMITIDOS.includes(arquivo.type)) {
+            throw new Error("Anexe apenas arquivos PDF, PNG, JPG ou JPEG.");
+        }
 
-    if (arquivo.size > 5 * 1024 * 1024) {
-        throw new Error("O PDF deve ter no máximo 5 MB.");
-    }
+        if (arquivo.size > 5 * 1024 * 1024) {
+            throw new Error("Cada arquivo deve ter no máximo 5 MB.");
+        }
 
-    return {
-        nome: arquivo.name,
-        tipo: arquivo.type,
-        tamanho: arquivo.size,
-        conteudoBase64: await converterArquivoParaBase64(arquivo)
-    };
+        return {
+            nome: arquivo.name,
+            tipo: arquivo.type,
+            tamanho: arquivo.size,
+            conteudoBase64: await converterArquivoParaBase64(arquivo)
+        };
+    }));
 }
 
 async function coletarAtividades() {
     const atividades = Array.from(document.querySelectorAll(".detalhes-item")).map((item) => ({
         atividade: item.querySelector(".atividade-input").value,
-        horas: item.querySelector(".horas-input").value,
+        horas: normalizarHoras(item.querySelector(".horas-input")?.value || ""),
         observacao: item.querySelector(".observacao-input").value
     }));
 
-    return atividades.filter(({ atividade, horas }) => atividade && horas);
+    return atividades.filter(({ atividade }) => atividade);
 }
 
-function alterarEstadoSalvando(estaSalvando) {
+function coletarColaboradoresAdicionais() {
+    return Array.from(document.querySelectorAll(".colaborador-adicional-item")).map((item) => ({
+        nome: item.querySelector(".colaborador-adicional-nome").value.trim(),
+        matricula: item.querySelector(".colaborador-adicional-matricula").value.trim(),
+        horas: normalizarHoras(item.querySelector(".colaborador-adicional-horas").value)
+    })).filter(({ nome, matricula, horas }) => nome || matricula || horas);
+}
+
+function normalizarHoras(valor) {
+    return String(valor || "").trim().replace(",", ".");
+}
+
+function aplicarSeparadorDecimalPonto(input) {
+    input.value = input.value.replace(",", ".");
+}
+
+function alterarEstadoSalvando(estaSalvando, mensagem = "Salvando...") {
     const icone = btnSalvar.querySelector("i");
     const texto = btnSalvar.querySelector("span");
 
     btnSalvar.disabled = estaSalvando;
     btnSalvar.classList.toggle("salvando", estaSalvando);
-    icone.className = estaSalvando ? "bi bi-gear-fill" : "bi bi-floppy";
-    texto.textContent = estaSalvando ? "Salvando..." : "Salvar Apontamento";
+    icone.className = estaSalvando ? "bi bi-arrow-repeat" : "bi bi-floppy";
+    texto.textContent = estaSalvando ? mensagem : "Salvar Apontamento";
+}
+
+function atualizarEtapaSalvamento(mensagem) {
+    alterarEstadoSalvando(true, mensagem);
+    feedbackGlobal.hidden = false;
+    feedbackGlobal.className = "feedback-global aviso salvando";
+    feedbackGlobal.textContent = mensagem;
+}
+
+function iniciarAnimacaoSalvamento() {
+    let etapaAtual = 0;
+    clearInterval(salvamentoIntervalo);
+    atualizarEtapaSalvamento(ETAPAS_SALVAMENTO[etapaAtual]);
+
+    salvamentoIntervalo = setInterval(() => {
+        etapaAtual = Math.min(etapaAtual + 1, ETAPAS_SALVAMENTO.length - 1);
+        atualizarEtapaSalvamento(ETAPAS_SALVAMENTO[etapaAtual]);
+    }, 1400);
+}
+
+function pararAnimacaoSalvamento() {
+    clearInterval(salvamentoIntervalo);
+    salvamentoIntervalo = null;
 }
 
 function alterarEstadoBuscando(estaBuscando) {
@@ -560,7 +953,13 @@ function fecharModalSugestao() {
     document.body.classList.remove("modal-aberto");
 }
 
-function abrirModalAtividade() {
+function abrirModalAtividade(item = null) {
+    atividadeEmEdicao = item;
+    modalAtividadeInput.value = item?.querySelector(".atividade-input")?.value || "";
+    modalObservacaoInput.value = item?.querySelector(".observacao-input")?.value || "";
+    modalHorasInput.value = item?.querySelector(".horas-input")?.value || "";
+    document.getElementById("modal-atividade-titulo").textContent = item ? "Editar atividade" : "Adicionar outra atividade";
+    btnConfirmarAtividade.querySelector("span").textContent = item ? "Salvar alterações" : "Adicionar atividade";
     modalAtividade.hidden = false;
     document.body.classList.add("modal-aberto");
     modalAtividadeInput.focus();
@@ -568,38 +967,111 @@ function abrirModalAtividade() {
 
 function fecharModalAtividade() {
     modalAtividade.hidden = true;
+    atividadeEmEdicao = null;
     modalAtividadeInput.value = "";
-    modalHorasInput.value = "";
     modalObservacaoInput.value = "";
+    modalHorasInput.value = "";
+    document.getElementById("modal-atividade-titulo").textContent = "Adicionar outra atividade";
+    btnConfirmarAtividade.querySelector("span").textContent = "Adicionar atividade";
     marcarCampo(modalAtividadeInput, false);
-    marcarCampo(modalHorasInput, false);
     fecharSugestoes();
     document.body.classList.remove("modal-aberto");
 }
 
+function abrirModalColaborador(item = null) {
+    colaboradorEmEdicao = item;
+    modalColaboradorNomeInput.value = item?.querySelector(".colaborador-adicional-nome")?.value || "";
+    modalColaboradorMatriculaInput.value = item?.querySelector(".colaborador-adicional-matricula")?.value || "";
+    modalColaboradorHorasInput.value = item?.querySelector(".colaborador-adicional-horas")?.value || "";
+    document.getElementById("modal-colaborador-titulo").textContent = item ? "Editar colaborador" : "Adicionar colaborador";
+    btnConfirmarColaborador.querySelector("span").textContent = item ? "Salvar alterações" : "Adicionar colaborador";
+    modalColaborador.hidden = false;
+    document.body.classList.add("modal-aberto");
+    modalColaboradorNomeInput.focus();
+}
+
+function fecharModalColaborador() {
+    modalColaborador.hidden = true;
+    colaboradorEmEdicao = null;
+    modalColaboradorNomeInput.value = "";
+    modalColaboradorMatriculaInput.value = "";
+    modalColaboradorHorasInput.value = "";
+    document.getElementById("modal-colaborador-titulo").textContent = "Adicionar colaborador";
+    btnConfirmarColaborador.querySelector("span").textContent = "Adicionar colaborador";
+    marcarCampo(modalColaboradorNomeInput, false);
+    marcarCampo(modalColaboradorHorasInput, false);
+    fecharSugestoes();
+    document.body.classList.remove("modal-aberto");
+}
+
+function abrirModalRevisao(dados) {
+    apontamentoPendente = dados;
+    revisaoConteudo.innerHTML = "";
+    revisaoConteudo.appendChild(criarComprovanteApontamento(dados));
+    modalRevisao.hidden = false;
+    document.body.classList.add("modal-aberto");
+}
+
+function fecharModalRevisao() {
+    modalRevisao.hidden = true;
+    apontamentoPendente = null;
+    revisaoConteudo.innerHTML = "";
+    document.body.classList.remove("modal-aberto");
+}
+
 function adicionarAtividadeDoModal() {
-    const atividade = buscarAtividadeDisponivel(modalAtividadeInput.value);
-    const horas = Number(modalHorasInput.value);
+    const atividade = modalAtividadeInput.value.trim();
 
     marcarCampo(modalAtividadeInput, !atividade);
-    marcarCampo(modalHorasInput, !modalHorasInput.value || horas <= 0);
 
-    if (!atividade || !modalHorasInput.value || horas <= 0) {
-        mostrarFeedback("Selecione uma atividade da lista e informe as horas antes de adicionar.", "erro");
+    if (!atividade) {
+        mostrarFeedback("Informe a atividade antes de adicionar.", "erro");
         return;
     }
 
-    const indice = document.querySelectorAll(".detalhes-item").length + 1;
-    const novoDetalhe = criarDetalhesItem(indice);
+    const item = atividadeEmEdicao || criarDetalhesItem(document.querySelectorAll(".detalhes-item").length + 1);
 
-    novoDetalhe.querySelector(".atividade-input").value = atividade;
-    novoDetalhe.querySelector(".horas-input").value = modalHorasInput.value;
-    novoDetalhe.querySelector(".observacao-input").value = modalObservacaoInput.value.trim();
-    detalhesContainer.appendChild(novoDetalhe);
-    configurarAutocomplete(novoDetalhe.querySelector(".atividade-input"), atividadesDisponiveis);
+    item.querySelector(".atividade-input").value = atividade;
+    item.querySelector(".observacao-input").value = modalObservacaoInput.value.trim();
+    item.querySelector(".horas-input").value = normalizarHoras(modalHorasInput.value);
+
+    if (!atividadeEmEdicao) {
+        detalhesContainer.appendChild(item);
+    }
+
+    atualizarResumoAtividadeItem(item);
     fecharModalAtividade();
     limparFeedback();
     atualizarResumo();
+}
+
+function adicionarColaboradorDoModal() {
+    const nome = modalColaboradorNomeInput.value.trim();
+    const matricula = modalColaboradorMatriculaInput.value.trim();
+    const horas = normalizarHoras(modalColaboradorHorasInput.value);
+    const horasNumero = Number(horas);
+
+    marcarCampo(modalColaboradorNomeInput, !nome, "Informe o nome do colaborador.");
+    marcarCampo(modalColaboradorHorasInput, !horasNumero || horasNumero <= 0, "Informe as horas desse colaborador.");
+
+    if (!nome || !horasNumero || horasNumero <= 0) {
+        mostrarFeedback("Informe nome e horas do colaborador antes de adicionar.", "erro");
+        return;
+    }
+
+    const item = colaboradorEmEdicao || criarColaboradorAdicionalItem();
+    item.querySelector(".colaborador-adicional-nome").value = nome;
+    item.querySelector(".colaborador-adicional-matricula").value = matricula;
+    item.querySelector(".colaborador-adicional-horas").value = horas;
+
+    if (!colaboradorEmEdicao) {
+        colaboradoresAdicionaisLista.appendChild(item);
+    }
+
+    atualizarResumoColaboradorAdicional(item);
+    atualizarNumeracaoColaboradoresAdicionais();
+    fecharModalColaborador();
+    limparFeedback();
 }
 
 function formatarValor(valor) {
@@ -620,6 +1092,84 @@ function formatarData(valor) {
     return data.toLocaleDateString("pt-BR", { timeZone: "UTC" });
 }
 
+function criarComprovanteApontamento(dados) {
+    const comprovante = document.createElement("div");
+    comprovante.className = "comprovante-apontamento";
+    const colaboradoresAdicionais = Array.isArray(dados.colaboradoresAdicionais) ? dados.colaboradoresAdicionais : [];
+    comprovante.innerHTML = `
+        <div class="comprovante-cabecalho">
+            <div>
+                <span>Comprovante de apontamento</span>
+                <strong>TFM ${formatarValor(dados.tfm)}</strong>
+            </div>
+        </div>
+
+        <div class="resultado-info-grid">
+            <div class="resultado-info-item"><span>Período</span><strong>${formatarData(dados.dataInicioTfm)} a ${formatarData(dados.dataFimTfm)}</strong></div>
+            <div class="resultado-info-item"><span>Nome</span><strong>${formatarValor(dados.nome)}</strong></div>
+            <div class="resultado-info-item"><span>Matrícula</span><strong>${formatarValor(dados.matricula)}</strong></div>
+            <div class="resultado-info-item"><span>Turno</span><strong>${formatarValor(dados.turno)}</strong></div>
+            <div class="resultado-info-item"><span>Projeto</span><strong>${formatarValor(dados.projeto)}</strong></div>
+            <div class="resultado-info-item"><span>Documento</span><strong>${dados.documentos?.length ? dados.documentos.map((documento) => documento.nome).join(", ") : "Sem documento anexado"}</strong></div>
+        </div>
+
+        <div class="resultado-atividades">
+            <strong>Atividades para salvar</strong>
+            ${dados.atividades.map((atividade) => `
+                <div class="resultado-atividade-item">
+                    <div><span>Atividade</span><strong>${formatarValor(atividade.atividade)}</strong></div>
+                    <div><span>Horas</span><strong>${formatarValor(atividade.horas)}</strong></div>
+                    <div><span>Observação</span><strong>${formatarValor(atividade.observacao)}</strong></div>
+                </div>
+            `).join("")}
+        </div>
+
+        ${colaboradoresAdicionais.length ? `
+            <div class="resultado-atividades">
+                <strong>Colaboradores adicionais</strong>
+                ${colaboradoresAdicionais.map((colaborador) => `
+                    <div class="resultado-atividade-item">
+                        <div><span>Nome</span><strong>${formatarValor(colaborador.nome)}</strong></div>
+                        <div><span>Matrícula</span><strong>${formatarValor(colaborador.matricula)}</strong></div>
+                        <div><span>Horas</span><strong>${formatarValor(colaborador.horas)}</strong></div>
+                    </div>
+                `).join("")}
+            </div>
+        ` : ""}
+    `;
+
+    return comprovante;
+}
+
+function imprimirComprovante() {
+    if (!apontamentoPendente) {
+        return;
+    }
+
+    const janela = window.open("", "_blank", "width=900,height=700");
+
+    if (!janela) {
+        mostrarFeedback("Permita pop-ups para imprimir o comprovante.", "aviso");
+        return;
+    }
+
+    janela.document.write(`
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <title>Comprovante TFM ${apontamentoPendente.tfm}</title>
+            <link rel="stylesheet" href="style.css">
+        </head>
+        <body class="pagina-impressao">
+            ${criarComprovanteApontamento(apontamentoPendente).outerHTML}
+            <script>window.onload = () => window.print();<\/script>
+        </body>
+        </html>
+    `);
+    janela.document.close();
+}
+
 function criarLinhaResumo(rotulo, valor) {
     const item = document.createElement("div");
     item.className = "resultado-info-item";
@@ -627,10 +1177,18 @@ function criarLinhaResumo(rotulo, valor) {
     return item;
 }
 
+function separarLinksDocumento(valor) {
+    return String(valor || "")
+        .split(" | ")
+        .map((link) => link.trim())
+        .filter(Boolean);
+}
+
 function criarResultadoTfm(dados) {
     const conteudo = document.createElement("div");
     conteudo.className = "resultado-tfm";
     const registros = Array.isArray(dados.registros) ? dados.registros : [];
+    const linksDocumento = separarLinksDocumento(dados.urlDocumento);
 
     const cabecalho = document.createElement("div");
     cabecalho.className = "resultado-tfm-cabecalho";
@@ -641,15 +1199,29 @@ function criarResultadoTfm(dados) {
         </div>
     `;
 
-    if (dados.urlDocumento) {
-        const link = document.createElement("a");
-        link.className = "btn-abrir-pdf";
-        link.href = dados.urlDocumento;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        link.innerHTML = `<i class="bi bi-box-arrow-up-right"></i> Abrir PDF`;
-        cabecalho.appendChild(link);
+    if (linksDocumento.length) {
+        const linksContainer = document.createElement("div");
+        linksContainer.className = "resultado-documentos-links";
+
+        linksDocumento.forEach((url, index) => {
+            const link = document.createElement("a");
+            link.className = "btn-abrir-pdf";
+            link.href = url;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.innerHTML = `<i class="bi bi-box-arrow-up-right"></i> ${linksDocumento.length > 1 ? `Documento ${index + 1}` : "Abrir documento"}`;
+            linksContainer.appendChild(link);
+        });
+
+        cabecalho.appendChild(linksContainer);
     }
+
+    const botaoEditar = document.createElement("button");
+    botaoEditar.type = "button";
+    botaoEditar.className = "btn-carregar-tfm";
+    botaoEditar.innerHTML = `<i class="bi bi-pencil-square"></i> Editar no formulário`;
+    botaoEditar.addEventListener("click", () => carregarTfmNoFormulario(dados));
+    cabecalho.appendChild(botaoEditar);
 
     const resumo = document.createElement("div");
     resumo.className = "resultado-info-grid";
@@ -657,7 +1229,9 @@ function criarResultadoTfm(dados) {
     resumo.appendChild(criarLinhaResumo("Matrícula", dados.matricula));
     resumo.appendChild(criarLinhaResumo("Turno", dados.turno));
     resumo.appendChild(criarLinhaResumo("Projeto", dados.projeto));
-    resumo.appendChild(criarLinhaResumo("PDF", dados.nomeDocumento || "Sem PDF anexado"));
+    resumo.appendChild(criarLinhaResumo("Documento", dados.nomeDocumento || "Sem documento anexado"));
+
+    const colaboradoresAdicionais = Array.isArray(dados.colaboradoresAdicionais) ? dados.colaboradoresAdicionais : [];
 
     const atividades = document.createElement("div");
     atividades.className = "resultado-atividades";
@@ -675,10 +1249,6 @@ function criarResultadoTfm(dados) {
                 <strong>${formatarValor(registro.atividade)}</strong>
             </div>
             <div>
-                <span>Horas</span>
-                <strong>${formatarValor(registro.horas)}</strong>
-            </div>
-            <div>
                 <span>Observação</span>
                 <strong>${formatarValor(registro.observacao)}</strong>
             </div>
@@ -688,6 +1258,20 @@ function criarResultadoTfm(dados) {
 
     conteudo.appendChild(cabecalho);
     conteudo.appendChild(resumo);
+
+    if (colaboradoresAdicionais.length) {
+        const colaboradores = document.createElement("div");
+        colaboradores.className = "resultado-atividades";
+        colaboradores.innerHTML = `<strong>Colaboradores adicionais</strong>${colaboradoresAdicionais.map((colaborador) => `
+            <div class="resultado-atividade-item">
+                <div><span>Nome</span><strong>${formatarValor(colaborador.nome)}</strong></div>
+                <div><span>Matrícula</span><strong>${formatarValor(colaborador.matricula)}</strong></div>
+                <div><span>Horas</span><strong>${formatarValor(colaborador.horas)}</strong></div>
+            </div>
+        `).join("")}`;
+        conteudo.appendChild(colaboradores);
+    }
+
     conteudo.appendChild(atividades);
 
     return conteudo;
@@ -789,33 +1373,85 @@ async function enviarSugestaoAtividade() {
     }
 }
 
+async function registrarCadastroPendente(colaborador) {
+    try {
+        await fetch(SCRIPT_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "text/plain;charset=utf-8"
+            },
+            body: JSON.stringify({
+                acao: "registrarCadastroPendente",
+                nome: colaborador.nome,
+                matricula: colaborador.matricula
+            })
+        });
+    } catch (erro) {
+        console.error(erro);
+    }
+}
+
+function carregarTfmNoFormulario(dados) {
+    document.getElementById("data-inicio-tfm").value = dados.dataInicioTfm || dados.data || "";
+    document.getElementById("data-fim-tfm").value = dados.dataFimTfm || dados.data || "";
+    document.getElementById("nome").value = dados.nome || "";
+    document.getElementById("matricula").value = dados.matricula || "";
+    document.getElementById("turno").value = dados.turno || "";
+    document.getElementById("tfm").value = dados.tfm || "";
+    document.getElementById("projeto").value = dados.projeto || "";
+    renderizarColaboradoresAdicionais(Array.isArray(dados.colaboradoresAdicionais) ? dados.colaboradoresAdicionais : []);
+
+    const registros = Array.isArray(dados.registros) ? dados.registros : [];
+    document.querySelectorAll(".detalhes-item").forEach((item, index) => {
+        if (index > 0) {
+            item.remove();
+        }
+    });
+
+    const primeiroItem = document.querySelector(".detalhes-item");
+    const itens = registros.length ? registros : [{ atividade: "", observacao: "" }];
+    itens.forEach((registro, index) => {
+        const item = index === 0 ? primeiroItem : criarDetalhesItem(index + 1);
+        item.querySelector(".atividade-input").value = registro.atividade || "";
+        item.querySelector(".horas-input").value = registro.horas || "";
+        item.querySelector(".observacao-input").value = registro.observacao || "";
+        atualizarResumoAtividadeItem(item);
+
+        if (index > 0) {
+            detalhesContainer.appendChild(item);
+        }
+    });
+
+    renumerarAtividades();
+    fecharModalTfm();
+    mostrarFeedback("Dados carregados no formulário. Confira antes de salvar novamente.", "aviso");
+}
+
 function validarFormulario() {
     const tfmInput = document.getElementById("tfm");
-    const horasInputs = Array.from(document.querySelectorAll(".horas-input"));
-    const atividadeInputs = Array.from(document.querySelectorAll(".atividade-input"));
+    const dataInicioInput = document.getElementById("data-inicio-tfm");
+    const dataFimInput = document.getElementById("data-fim-tfm");
     let valido = form.checkValidity();
 
-    marcarCampo(tfmInput, !/^[0-9]{6}$/.test(tfmInput.value.trim()));
+    marcarCampo(tfmInput, !/^[0-9]{6}$/.test(tfmInput.value.trim()), "O TFM precisa ter exatamente 6 números.");
+    marcarCampo(dataInicioInput, !dataInicioInput.value, "Informe a data inicial do TFM.");
+    marcarCampo(dataFimInput, !dataFimInput.value || dataFimInput.value < dataInicioInput.value, "Informe uma data final igual ou posterior ao início.");
 
-    atividadeInputs.forEach((input) => {
-        const atividade = buscarAtividadeDisponivel(input.value);
-        const invalido = !atividade;
-        marcarCampo(input, invalido);
-        if (invalido) {
-            valido = false;
-        } else {
-            input.value = atividade;
-        }
-    });
+    for (const item of document.querySelectorAll(".colaborador-adicional-item")) {
+        const nomeInput = item.querySelector(".colaborador-adicional-nome");
+        const horasInput = item.querySelector(".colaborador-adicional-horas");
+        const nome = nomeInput.value.trim();
+        const horas = Number(normalizarHoras(horasInput.value));
 
-    horasInputs.forEach((input) => {
-        const horas = Number(input.value);
-        const invalido = !input.value || horas <= 0;
-        marcarCampo(input, invalido);
-        if (invalido) {
-            valido = false;
+        marcarCampo(nomeInput, !nome, "Informe o nome do colaborador.");
+        marcarCampo(horasInput, !horas || horas <= 0, "Informe as horas desse colaborador.");
+
+        if (!nome || !horas || horas <= 0) {
+            mostrarFeedback("Preencha nome e horas dos colaboradores adicionais ou remova a linha.", "erro");
+            (!nome ? nomeInput : horasInput).focus();
+            return false;
         }
-    });
+    }
 
     if (!/^[0-9]{6}$/.test(tfmInput.value.trim())) {
         valido = false;
@@ -824,11 +1460,10 @@ function validarFormulario() {
         return false;
     }
 
-    const atividadeInvalida = atividadeInputs.find((input) => !buscarAtividadeDisponivel(input.value));
-
-    if (atividadeInvalida) {
-        mostrarFeedbackAtividadeInvalida(atividadeInvalida);
-        atividadeInvalida.focus();
+    if (!dataInicioInput.value || !dataFimInput.value || dataFimInput.value < dataInicioInput.value) {
+        valido = false;
+        mostrarFeedback("Informe um período válido para o TFM.", "erro");
+        (dataFimInput.value < dataInicioInput.value ? dataFimInput : dataInicioInput).focus();
         return false;
     }
 
@@ -844,9 +1479,130 @@ function validarFormulario() {
     return valido;
 }
 
+async function prepararDadosApontamento() {
+    const dataInicioTfm = document.getElementById("data-inicio-tfm").value;
+    const dataFimTfm = document.getElementById("data-fim-tfm").value;
+    const atividades = await coletarAtividades();
+    const colaboradoresAdicionais = coletarColaboradoresAdicionais();
+    const atividadesDistribuidas = atividades.map((atividade) => ({
+        ...atividade,
+        distribuicaoDiaria: distribuirHorasNoPeriodo(atividade.horas, dataInicioTfm, dataFimTfm)
+    }));
+
+    return {
+        data: dataFimTfm,
+        dataInicioTfm,
+        dataFimTfm,
+        nome: document.getElementById("nome").value,
+        matricula: document.getElementById("matricula").value,
+        cadastroPendente: Boolean(usuarioAtual?.cadastroPendente),
+        observacaoCadastro: usuarioAtual?.cadastroPendente ? "Colaborador entrou pelo botão Não encontrei meu nome." : "",
+        turno: document.getElementById("turno").value,
+        tfm: document.getElementById("tfm").value,
+        projeto: document.getElementById("projeto").value,
+        colaboradoresAdicionais,
+        documentos: await prepararDocumentos(document.getElementById("documento-1")),
+        atividades: atividadesDistribuidas,
+        distribuicaoDiaria: atividadesDistribuidas.flatMap((atividade) => (
+            atividade.distribuicaoDiaria.map((dia) => ({
+                data: dia.data,
+                horas: dia.horas,
+                atividade: atividade.atividade,
+                observacao: atividade.observacao
+            }))
+        ))
+    };
+}
+
+async function salvarApontamentoConfirmado() {
+    if (!apontamentoPendente || btnSalvar.disabled) {
+        return;
+    }
+
+    const dados = apontamentoPendente;
+
+    try {
+        iniciarAnimacaoSalvamento();
+        btnConfirmarSalvamento.disabled = true;
+
+        atualizarEtapaSalvamento("Coletando dados para envio...");
+        const resposta = await fetch(SCRIPT_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "text/plain;charset=utf-8"
+            },
+            body: JSON.stringify(dados)
+        });
+
+        if (!resposta.ok) {
+            throw new Error("Erro ao enviar os dados para o Apps Script.");
+        }
+
+        atualizarEtapaSalvamento("Salvando na planilha...");
+        const resultado = await resposta.json();
+
+        if (!resultado.sucesso) {
+            throw new Error(resultado.erro || "Erro ao salvar apontamento.");
+        }
+
+        atualizarEtapaSalvamento("Atualizando resumo...");
+        salvarHistorico(dados.atividades.map((atividade) => ({
+            data: `${formatarData(dados.dataInicioTfm)} a ${formatarData(dados.dataFimTfm)}`,
+            nome: dados.nome,
+            matricula: dados.matricula,
+            tfm: dados.tfm,
+            atividade: atividade.atividade,
+            observacao: atividade.observacao,
+            horas: Number(atividade.horas || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 }),
+            salvoEm: new Date().toISOString()
+        })));
+
+        resumoPlanilhaCarregado = false;
+        await carregarResumoPlanilha();
+
+        pararAnimacaoSalvamento();
+        fecharModalRevisao();
+        mostrarFeedback("Dados enviados com sucesso!", "sucesso");
+        form.reset();
+        configurarDataAtual();
+        if (usuarioAtual) {
+            document.getElementById("nome").value = usuarioAtual.nome;
+            matriculaInput.value = usuarioAtual.matricula;
+        }
+        document.querySelectorAll(".arquivo-nome").forEach((nomeArquivo) => {
+            nomeArquivo.textContent = "Nenhum arquivo selecionado";
+        });
+
+        document.querySelectorAll(".atividade-item").forEach((item, index) => {
+            if (index > 0) {
+                item.remove();
+            }
+        });
+
+        document.querySelectorAll(".detalhes-item").forEach((item, index) => {
+            if (index > 0) {
+                item.remove();
+            }
+        });
+        limparColaboradoresAdicionais();
+        await carregarHistoricoPlanilha();
+    } catch (erro) {
+        pararAnimacaoSalvamento();
+        mostrarFeedback(erro.message || "Erro ao salvar!", "erro");
+        console.error(erro);
+    } finally {
+        pararAnimacaoSalvamento();
+        alterarEstadoSalvando(false);
+        btnConfirmarSalvamento.disabled = false;
+        atualizarResumo();
+    }
+}
+
 document.querySelectorAll(".atividade-input").forEach((input) => configurarAutocomplete(input, atividadesDisponiveis));
 configurarAutocomplete(modalAtividadeInput, atividadesDisponiveis);
+configurarAutocomplete(modalColaboradorNomeInput, colaboradoresDisponiveis, atualizarMatriculaModalColaborador, atualizarMatriculaModalColaborador);
 document.querySelectorAll(".colaborador-input").forEach((input) => configurarAutocomplete(input, colaboradoresDisponiveis, atualizarMatriculaPorNome, atualizarMatriculaPorNome));
+configurarAutocomplete(loginNomeInput, colaboradoresDisponiveis, atualizarMatriculaLoginPorNome, atualizarMatriculaLoginPorNome);
 document.querySelectorAll(".documento-input").forEach(configurarDocumento);
 
 document.addEventListener("mousedown", (event) => {
@@ -861,6 +1617,12 @@ btnAdd.addEventListener("click", () => {
 
 detalhesContainer.addEventListener("click", (event) => {
     const botaoRemover = event.target.closest(".btn-remover-atividade");
+    const botaoEditar = event.target.closest(".btn-editar-atividade");
+
+    if (botaoEditar) {
+        abrirModalAtividade(botaoEditar.closest(".detalhes-item"));
+        return;
+    }
 
     if (!botaoRemover) {
         return;
@@ -874,6 +1636,22 @@ btnBuscar.addEventListener("click", buscarDocumentoTfm);
 btnAbrirSugestao.addEventListener("click", abrirModalSugestao);
 btnSugerirAtividade.addEventListener("click", enviarSugestaoAtividade);
 btnConfirmarAtividade.addEventListener("click", adicionarAtividadeDoModal);
+btnConfirmarColaborador.addEventListener("click", adicionarColaboradorDoModal);
+btnAddColaborador.addEventListener("click", () => abrirModalColaborador());
+colaboradoresAdicionaisLista.addEventListener("click", (event) => {
+    const botaoRemover = event.target.closest(".btn-remover-colaborador");
+    const botaoEditar = event.target.closest(".btn-editar-colaborador");
+
+    if (botaoEditar) {
+        abrirModalColaborador(botaoEditar.closest(".colaborador-adicional-item"));
+        return;
+    }
+
+    if (botaoRemover) {
+        botaoRemover.closest(".colaborador-adicional-item").remove();
+        atualizarNumeracaoColaboradoresAdicionais();
+    }
+});
 buscaTfmInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
         event.preventDefault();
@@ -895,6 +1673,13 @@ modalAtividade.addEventListener("keydown", (event) => {
     }
 });
 
+modalColaborador.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        adicionarColaboradorDoModal();
+    }
+});
+
 document.querySelectorAll("[data-fechar-modal]").forEach((elemento) => {
     elemento.addEventListener("click", fecharModalTfm);
 });
@@ -911,15 +1696,54 @@ document.querySelectorAll("[data-fechar-atividade]").forEach((elemento) => {
     elemento.addEventListener("click", fecharModalAtividade);
 });
 
-btnHelp.addEventListener("click", abrirModalHelp);
+document.querySelectorAll("[data-fechar-colaborador]").forEach((elemento) => {
+    elemento.addEventListener("click", fecharModalColaborador);
+});
+
+document.querySelectorAll("[data-fechar-revisao]").forEach((elemento) => {
+    elemento.addEventListener("click", fecharModalRevisao);
+});
+
+botoesHelp.forEach((botao) => botao.addEventListener("click", abrirModalHelp));
+btnConfirmarSalvamento.addEventListener("click", salvarApontamentoConfirmado);
+btnImprimirRevisao.addEventListener("click", imprimirComprovante);
+btnEntrarLogin.addEventListener("click", entrarLogin);
+btnLoginAlternativo.addEventListener("click", alternarLoginPendente);
+btnEntrarPendente.addEventListener("click", entrarLoginPendente);
+btnSairLogin.addEventListener("click", sairLogin);
 
 document.addEventListener("input", (event) => {
-    if (event.target.matches(".horas-input, #tfm, .atividade-input, .atividade-input-modal")) {
+    if (event.target.matches(".horas-input, #modal-horas-input, #modal-colaborador-horas, .colaborador-adicional-horas")) {
+        aplicarSeparadorDecimalPonto(event.target);
+    }
+
+    if (event.target.matches("#modal-colaborador-matricula, .colaborador-adicional-matricula")) {
+        limitarParaNumeros(event.target, 6);
+    }
+
+    if (event.target.matches("#modal-colaborador-nome, #modal-colaborador-horas, .colaborador-adicional-nome, .colaborador-adicional-horas")) {
+        marcarCampo(event.target, false);
+    }
+
+    if (event.target.matches("#tfm")) {
         marcarCampo(event.target, false);
         atualizarResumo();
     }
 
     if (event.target.matches("#tfm, #busca-tfm")) {
+        limitarParaNumeros(event.target, 6);
+    }
+
+    if (event.target.matches("#login-matricula")) {
+        limitarParaNumeros(event.target, 6);
+        const colaborador = buscarColaboradorPorMatricula(event.target.value);
+
+        if (colaborador && !loginNomeInput.value.trim()) {
+            loginNomeInput.value = colaborador.nome;
+        }
+    }
+
+    if (event.target.matches("#novo-login-matricula")) {
         limitarParaNumeros(event.target, 6);
     }
 
@@ -944,6 +1768,42 @@ document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !modalAtividade.hidden) {
         fecharModalAtividade();
     }
+
+    if (event.key === "Escape" && !modalColaborador.hidden) {
+        fecharModalColaborador();
+    }
+
+    if (event.key === "Escape" && !modalRevisao.hidden) {
+        fecharModalRevisao();
+    }
+});
+
+[loginNomeInput, loginMatriculaInput].forEach((input) => {
+    input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            entrarLogin();
+        }
+    });
+
+    input.addEventListener("input", () => {
+        marcarCampo(input, false);
+        limparFeedbackLogin();
+    });
+});
+
+[novoLoginNomeInput, novoLoginMatriculaInput].forEach((input) => {
+    input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            entrarLoginPendente();
+        }
+    });
+
+    input.addEventListener("input", () => {
+        marcarCampo(input, false);
+        limparFeedbackLogin();
+    });
 });
 
 form.addEventListener("submit", async (event) => {
@@ -959,75 +1819,10 @@ form.addEventListener("submit", async (event) => {
     }
 
     try {
-        alterarEstadoSalvando(true);
-
-        const dados = {
-            data: document.getElementById("data").value,
-            nome: document.getElementById("nome").value,
-            matricula: document.getElementById("matricula").value,
-            turno: document.getElementById("turno").value,
-            tfm: document.getElementById("tfm").value,
-            projeto: document.getElementById("projeto").value,
-            documento: await prepararDocumento(document.getElementById("documento-1")),
-            atividades: await coletarAtividades()
-        };
-
-        const resposta = await fetch(SCRIPT_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "text/plain;charset=utf-8"
-            },
-            body: JSON.stringify(dados)
-        });
-
-        if (!resposta.ok) {
-            throw new Error("Erro ao enviar os dados para o Apps Script.");
-        }
-
-        const resultado = await resposta.json();
-
-        if (!resultado.sucesso) {
-            throw new Error(resultado.erro || "Erro ao salvar apontamento.");
-        }
-
-        salvarHistorico(dados.atividades.map((atividade) => ({
-            data: formatarData(dados.data),
-            nome: dados.nome,
-            tfm: dados.tfm,
-            atividade: atividade.atividade,
-            observacao: atividade.observacao,
-            horas: Number(atividade.horas || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 }),
-            salvoEm: new Date().toISOString()
-        })));
-
-        resumoPlanilhaCarregado = false;
-        await carregarResumoPlanilha();
-
-        mostrarFeedback("Apontamento salvo com sucesso!", "sucesso");
-        form.reset();
-        configurarDataAtual();
-        document.querySelectorAll(".arquivo-nome").forEach((nomeArquivo) => {
-            nomeArquivo.textContent = "Nenhum arquivo selecionado";
-        });
-
-        document.querySelectorAll(".atividade-item").forEach((item, index) => {
-            if (index > 0) {
-                item.remove();
-            }
-        });
-
-        document.querySelectorAll(".detalhes-item").forEach((item, index) => {
-            if (index > 0) {
-                item.remove();
-            }
-        });
-        await carregarHistoricoPlanilha();
+        abrirModalRevisao(await prepararDadosApontamento());
     } catch (erro) {
-        mostrarFeedback(erro.message || "Erro ao salvar!", "erro");
+        mostrarFeedback(erro.message || "Erro ao preparar revisão do apontamento.", "erro");
         console.error(erro);
-    } finally {
-        alterarEstadoSalvando(false);
-        atualizarResumo();
     }
 });
 
@@ -1035,3 +1830,4 @@ configurarDataAtual();
 renderizarHistorico();
 carregarResumoPlanilha();
 carregarHistoricoPlanilha();
+exigirLogin();
